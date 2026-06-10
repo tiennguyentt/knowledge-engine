@@ -917,8 +917,22 @@ def render_live() -> None:
     import time as _time
     name = f"live-{_time.strftime('%Y%m%d-%H%M%S')}"
     save_run(run, name)
-    st.success(f"Run complete — saved as {name}.json. Rendering the catch view…")
-    render_hero(run)
+    # hand the full-roster conversation to the Chat workspace
+    feed = [{"kind": "system", "text": f"LIVE MODEL RUN · {run['meta']['model']} · real tokens · full roster"}]
+    for phase in run["stages"]["debate"]["phases"]:
+        feed.append({"kind": "system", "text": phase["title"]})
+        for ev in phase["events"]:
+            if ev["type"] == "router" and not ev.get("close_phase"):
+                feed.append({"kind": "router", "text": ev["focused_question"]})
+            elif ev["type"] == "turn":
+                feed.append({"kind": "turn", "role": ev["role"], "message": ev["message"], "stance": ev["stance"]})
+    feed.append({"kind": "turn", "role": "arbiter", "message": run["stages"]["debate"]["arbiter"]["summary"], "stance": "ruling"})
+    st.session_state["chat_feed"] = feed
+    st.session_state["active_run"] = run
+    st.session_state["active_run_name"] = name
+    st.session_state["workspace"] = "💬 Chat"
+    st.success(f"Run complete — saved as {name}.json. Opening the team chat…")
+    st.rerun()
 
 
 # ---------------------------------------------------------------- routing
