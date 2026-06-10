@@ -130,11 +130,13 @@ def render_hero(run: dict) -> None:
     st.markdown(f'<div style="font-family:JetBrains Mono,monospace;font-size:11.5px;margin:2px 0 10px;line-height:2">{pipe}</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="se-stats">'
-        + stat(f'<span class="from">{g1["overall_score"]} →</span> {g2["overall_score"]} <span class="delta">+{g2["overall_score"] - g1["overall_score"]}</span>', "spec readiness")
+        + stat(f'<span class="from">{g1["overall_score"]} →</span> '
+               f'<span class="se-countup" style="--se-target:{g2["overall_score"]}"></span> '
+               f'<span class="delta">+{g2["overall_score"] - g1["overall_score"]}</span>', "spec readiness")
         + stat(f'<span class="from">{p0_1} →</span> {p0_2}', "P0 blockers")
         + stat(f'<span class="from">{gate1["errors"]} →</span> {gate2["errors"]}', "gate errors (code-enforced)")
         + stat(f'{len(arbiter["unresolved_human_decisions"])}', "decisions left to the human")
-        + stat(esc(g2["verdict"].replace("_", " ").lower()), "verdict")
+        + stat(f'<span class="se-lockin">{esc(g2["verdict"].replace("_", " ").lower())}</span>', "verdict")
         + "</div>",
         unsafe_allow_html=True,
     )
@@ -208,7 +210,7 @@ def render_hero(run: dict) -> None:
     # ---- gate strip ---------------------------------------------------------
     theme.section("the gate", "Code-enforced. Models cannot override these results.", f'{gate1["errors"]} errors → {gate2["errors"]}')
     chips = " ".join(f'<span class="se-chip" style="border-color:{"#F85149" if h["severity"] == "error" else "#F2A65A"};color:{"#F85149" if h["severity"] == "error" else "#F2A65A"};margin-left:0">{esc(h["rule_id"])} {esc(h["requirement_id"])}</span>' for h in gate1["hits"])
-    st.markdown(f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">{chips}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="se-gatescan" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;padding:4px 2px">{chips}</div>', unsafe_allow_html=True)
     with st.expander("inspect the deterministic gate log"):
         hits_html = "".join(
             f'<div class="se-gatehit"><span class="{ "rid" if h["severity"] == "error" else "warn" }">'

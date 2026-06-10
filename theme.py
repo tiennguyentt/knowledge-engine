@@ -96,8 +96,29 @@ h1, h2, h3 { font-family: 'IBM Plex Sans', sans-serif !important; letter-spacing
 .se-catch:nth-of-type(1), .se-stat:nth-child(1) { animation-delay: .05s; }
 .se-stat:nth-child(2) { animation-delay: .1s; } .se-stat:nth-child(3) { animation-delay: .15s; }
 .se-stat:nth-child(4) { animation-delay: .2s; } .se-stat:nth-child(5) { animation-delay: .25s; }
+/* score count-up: registered custom property animates the counter itself */
+@property --se-n { syntax: '<integer>'; initial-value: 0; inherits: false; }
+.se-countup { --se-n: var(--se-target, 0); counter-reset: sen var(--se-n);
+  animation: seCount .9s cubic-bezier(.16,1,.3,1) .25s both; }
+.se-countup::after { content: counter(sen); }
+@keyframes seCount { from { --se-n: 0; } to { --se-n: var(--se-target, 0); } }
+
+/* verdict lock-in: stamps into place after the score settles */
+@keyframes seLock { 0% { opacity: 0; transform: scale(1.45); }
+  60% { opacity: 1; transform: scale(.96); } 100% { opacity: 1; transform: scale(1); } }
+.se-lockin { display: inline-block; animation: seLock .55s cubic-bezier(.2,1.4,.4,1) .9s both; }
+
+/* gate scanline: one sweep over the code-enforced chips */
+.se-gatescan { position: relative; overflow: hidden; border-radius: 8px; }
+.se-gatescan::after { content: ''; position: absolute; top: 0; bottom: 0; width: 34%; left: -40%;
+  background: linear-gradient(90deg, transparent, rgba(124,140,255,.12), transparent);
+  pointer-events: none; animation: seScan 1.5s ease-out .3s 2; }
+@keyframes seScan { to { left: 110%; } }
+
 @media (prefers-reduced-motion: reduce) {
   .se-card, .se-catch, .se-turn, .se-stat, .se-spechead { animation: none; }
+  .se-countup, .se-lockin { animation: none; }
+  .se-gatescan::after { display: none; }
 }
 
 /* ---- voice ------------------------------------------------------------ */
