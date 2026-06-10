@@ -1,7 +1,8 @@
-"""Spec Engine — workflow 01 of an agent-operated product team.
+"""Knowledge Engine — an agent-operated knowledge intelligence system.
 
-Transcript -> source-traced wiki -> truth-hierarchy conflict check ->
-spec draft -> automated grading -> autonomous role debate -> human sign-off.
+Workflow 01 (spec): evidence -> source-traced wiki -> truth-hierarchy
+conflict check -> spec draft -> automated grading -> autonomous role
+debate -> human sign-off.
 
 Replay mode needs no API key. Live mode runs the real pipeline through any
 OpenAI-compatible endpoint (OpenRouter by default) with a key you provide.
@@ -12,6 +13,7 @@ import time
 
 import streamlit as st
 
+import intro
 import theme
 from engine.debate import ROLES
 from engine.llm import DEFAULT_BASE_URL, SUGGESTED_MODELS, LLM
@@ -24,13 +26,17 @@ from engine.pipeline import (
     save_run,
 )
 
-st.set_page_config(page_title="Spec Engine", page_icon="📐", layout="wide")
+st.set_page_config(page_title="Knowledge Engine", page_icon="📐", layout="wide")
 theme.inject()
 
-theme.kicker("Agent-operated product team · workflow 01 / spec")
+if st.session_state.get("view", "demo") == "intro":
+    intro.render()
+    st.stop()
+
+theme.kicker("Knowledge Engine · workflow 01 / spec")
 st.markdown("# Not AI-assisted. Agent-operated.")
 st.markdown(
-    '<p style="color:#9AA4B2;max-width:760px">Raw transcripts in — a graded, '
+    '<p style="color:#9AA4B2;max-width:760px">Raw evidence in — a graded, '
     "source-backed, debate-hardened spec out. Role agents run the work "
     "autonomously and argue with each other; a human reads the diff and signs "
     "off.</p>",
@@ -38,11 +44,17 @@ st.markdown(
 )
 
 # ---------------------------------------------------------------- sidebar
+MODES = ["Replay a recorded run", "Run live"]
+_cta = st.session_state.pop("intro_cta_mode", None)
 with st.sidebar:
+    if st.button("← What this system solves", use_container_width=True):
+        st.session_state["view"] = "intro"
+        st.rerun()
     st.header("Mode")
     mode = st.radio(
         "How do you want to see the pipeline?",
-        ["Replay a recorded run", "Run live"],
+        MODES,
+        index=MODES.index(_cta) if _cta in MODES else 0,
         label_visibility="collapsed",
     )
 
@@ -203,21 +215,22 @@ def render_run(run: dict) -> None:
     if meta.get("note"):
         st.markdown(f'<p class="se-trace">{esc(meta["note"])}</p>', unsafe_allow_html=True)
 
-    labels = list(STAGE_TITLES.values()) + ["6 · Sign-off"]
+    # Debate-first: landing on the run shows the agents talking to each other.
+    labels = ["★ Agent debate", "1 · Wiki", "2 · Conflicts", "3 · Spec", "4 · Grading", "6 · Sign-off"]
     stage_tabs = st.tabs(labels)
     with stage_tabs[0]:
-        render_wiki(run["stages"]["wiki"])
-    with stage_tabs[1]:
-        render_conflicts(run["stages"]["conflicts"])
-    with stage_tabs[2]:
-        render_spec(run["stages"]["spec"])
-    with stage_tabs[3]:
-        render_grades(run["stages"]["grade"])
-    with stage_tabs[4]:
         if run["stages"].get("debate"):
             render_debate(run["stages"]["debate"])
         else:
             st.info("This run predates the debate stage — run live to generate one.")
+    with stage_tabs[1]:
+        render_wiki(run["stages"]["wiki"])
+    with stage_tabs[2]:
+        render_conflicts(run["stages"]["conflicts"])
+    with stage_tabs[3]:
+        render_spec(run["stages"]["spec"])
+    with stage_tabs[4]:
+        render_grades(run["stages"]["grade"])
     with stage_tabs[5]:
         render_signoff(run)
 
@@ -272,7 +285,7 @@ else:
         st.download_button(
             "⬇ Download run JSON",
             data=json.dumps(run, indent=2, ensure_ascii=False),
-            file_name="spec-engine-run.json",
+            file_name="knowledge-engine-run.json",
             mime="application/json",
         )
     elif not api_key:

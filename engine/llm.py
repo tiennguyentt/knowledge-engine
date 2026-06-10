@@ -15,7 +15,7 @@ from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
 DEFAULT_BASE_URL = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
-DEFAULT_MODEL = os.getenv("SPEC_ENGINE_MODEL", "deepseek/deepseek-chat")
+DEFAULT_MODEL = os.getenv("KNOWLEDGE_ENGINE_MODEL", "deepseek/deepseek-chat")
 
 # Cheap, JSON-reliable starting points on OpenRouter. Any model id works.
 SUGGESTED_MODELS = [
