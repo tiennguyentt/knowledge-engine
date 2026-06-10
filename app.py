@@ -463,7 +463,7 @@ def render_chat(run: dict) -> None:
             instant = b2.button("Show transcript", use_container_width=True)
             if play or instant:
                 st.session_state["chat_played"] = True
-                _play_into_chat(run, col_chat, rail_ph, animate=play)
+                _play_into_chat(run, col_chat, rail_ph, odo_ph, animate=play)
                 st.rerun()
         else:
             for item in feed:
@@ -489,11 +489,27 @@ def _render_feed_item(item: dict) -> None:
                     f'{esc(item["text"])}</div>', unsafe_allow_html=True)
 
 
-def _play_into_chat(run: dict, container, rail_ph, animate: bool) -> None:
+def _play_into_chat(run: dict, container, rail_ph, odo_ph, animate: bool) -> None:
     s = run["stages"]
     feed = st.session_state["chat_feed"]
     feed.append({"kind": "system", "text": f'RECORDED REPLAY · {run["meta"].get("kind","run")} · real engine sequence · not live inference'})
     done: set = set()
+
+    usage = run["meta"]["usage"]
+    total_tokens = usage["input_tokens"] + usage["output_tokens"]
+    all_msgs = [ev["message"] for ph_ in s["debate"]["phases"] for ev in ph_["events"] if ev["type"] == "turn"]
+    all_msgs.append(s["debate"]["arbiter"]["summary"])
+    total_chars = sum(len(m) for m in all_msgs) or 1
+    odo_tail = (f' · gate <b>{s["gate"]["errors"]}→{s["gate_round2"]["errors"]}</b>'
+                f' · score <b>{s["grade_round1"]["overall_score"]}→{s["grade_round2"]["overall_score"]}</b>')
+    spent_chars = 0
+
+    def _odo(chars_done: int) -> None:
+        tokens = min(total_tokens, int(total_tokens * chars_done / total_chars))
+        odo_ph.markdown(f'<div class="se-odo">tokens <b>{tokens:,}</b>{odo_tail}</div>', unsafe_allow_html=True)
+
+    if animate:
+        _odo(0)
     with container:
         for phase in s["debate"]["phases"]:
             feed.append({"kind": "system", "text": phase["title"]})
@@ -511,10 +527,15 @@ def _play_into_chat(run: dict, container, rail_ph, animate: bool) -> None:
                         ph = st.empty()
                         msg = ev["message"]
                         step = max(3, len(msg) // 60)
-                        for i in range(0, len(msg), step):
+                        for n, i in enumerate(range(0, len(msg), step)):
                             ph.markdown(chat_msg_html(ev["role"], msg[: i + step], ev["stance"], cursor=True), unsafe_allow_html=True)
+                            if n % 4 == 0:
+                                _odo(spent_chars + i)
                             time.sleep(0.03)
                         ph.markdown(chat_msg_html(ev["role"], msg, ev["stance"]), unsafe_allow_html=True)
+                    spent_chars += len(ev["message"])
+                    if animate:
+                        _odo(spent_chars)
                     done.add(ev["role"])
                     feed.append({"kind": "turn", "role": ev["role"], "message": ev["message"], "stance": ev["stance"]})
         arb = s["debate"]["arbiter"]
@@ -523,6 +544,7 @@ def _play_into_chat(run: dict, container, rail_ph, animate: bool) -> None:
         if animate:
             rail_ph.markdown(presence_rail_html({"arbiter"}, done), unsafe_allow_html=True)
             st.markdown(chat_msg_html("arbiter", arb["summary"], "ruling"), unsafe_allow_html=True)
+            _odo(total_chars)
         feed.append({"kind": "system", "text": "sequence complete · type below to challenge the team, or open Decide to rule"})
 
 
