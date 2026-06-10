@@ -18,7 +18,7 @@ import streamlit as st
 
 import intro
 import theme
-from engine import handoff, ledger, sponsored, team, timemachine
+from engine import compiler, handoff, ledger, sponsored, team, timemachine
 from engine.llm import DEFAULT_BASE_URL, SUGGESTED_MODELS, LLM
 from engine.pipeline import DATA_DIR, list_runs, load_run, run_pipeline, save_run
 from engine.schemas import DraftSpec
@@ -300,13 +300,44 @@ def render_playback(run: dict, chars_per_sec: int) -> None:
 
 
 # ---------------------------------------------------------------- the spec ships
-FRAUD_KEYWORDS = ["staged", "fake", "collusion", "pre-arranged", "insurance fraud", "witness paid"]
-
-
 def render_shipped_feature(run: dict) -> None:
-    theme.section("the spec ships", "Executable acceptance-test slice — pure code, every path cites the baseline",
-                  "no model at runtime")
-    st.markdown('<p class="se-trace">built from the signed spec · every verdict cites its requirement · try to break it</p>', unsafe_allow_html=True)
+    signoff = st.session_state.get("signoff")
+    if st.session_state.get("tm_reverse_c1"):
+        signoff = {"baseline_id": (signoff or {}).get("baseline_id", "BL-counterfactual"),
+                   "rulings": [{"decision_text": "Policy section 4.1 contradicts the CEO decision",
+                                 "choice": "Reverse: the published policy wins; disable the automated behavior in v1",
+                                 "rationale": "Time Machine counterfactual"}]}
+    table = compiler.compile_baseline(run, signoff, ledger.load_rules())
+
+    theme.section("the spec ships", "Compiled from the signed baseline — pure code, every path cites it",
+                  f"{table.baseline_id} · rule table v{table.version}")
+    st.markdown('<p class="se-trace">spec + your rulings compile into this behavior · no model at runtime · flip the ruling and watch it propagate</p>', unsafe_allow_html=True)
+
+    tm = st.toggle("⏳ Executable Time Machine — reverse the C1 ruling (published policy wins)",
+                   value=st.session_state.get("tm_reverse_c1", False))
+    if tm != st.session_state.get("tm_reverse_c1", False):
+        st.session_state["tm_reverse_c1"] = tm
+        st.rerun()
+    if not table.auto_approval_enabled:
+        st.markdown('<div class="se-flag" style="display:block">rule table v2 active — auto-approval DISABLED by the reversed ruling; every clean claim now takes the human path</div>', unsafe_allow_html=True)
+
+    with st.expander(f"⚖ decision table v{table.version} — the compiled IR this engine executes"):
+        for e in sorted(table.entries, key=lambda x: x.order):
+            conds = " AND ".join(f'{c["field"]} {c["op"]} {c["value"]}' for c in e.conditions) or "always"
+            st.markdown(f'<div class="se-gatehit"><span class="rid">{esc(e.id)}</span> · IF {esc(conds)} → '
+                        f'<b>{esc(e.verdict.upper())}</b> · <i>{esc(e.cites[:90])}</i></div>', unsafe_allow_html=True)
+
+    if st.button("▶ Run acceptance board (vectors derived independently from the baseline)"):
+        results = compiler.run_acceptance(table)
+        for r in results:
+            color = "#3FB950" if r["passed"] else "#F85149"
+            mark = "✓" if r["passed"] else "✗"
+            st.markdown(f'<div class="se-gatehit"><span style="color:{color};font-weight:600">{mark} {esc(r["id"])}</span> '
+                        f'· {esc(r["ac"])} · expected <b>{esc(r["expect"])}</b> got <b>{esc(r["got"])}</b></div>',
+                        unsafe_allow_html=True)
+        n_pass = sum(1 for r in results if r["passed"])
+        st.markdown(f'<p class="se-trace">{n_pass}/{len(results)} acceptance vectors green · table v{table.version} · 0 model calls</p>', unsafe_allow_html=True)
+
     presets = {
         "Clean claim < 5M": (3_800_000, "rear fender dent from parking incident", True, "active", True),
         "Fraud keyword": (4_200_000, "staged collision with witness statement", True, "active", True),
@@ -326,250 +357,27 @@ def render_shipped_feature(run: dict) -> None:
         desc = st.text_input("Incident description", value=desc)
         c3, c4 = st.columns(2)
         photo = c3.checkbox("Photo(s) attached", value=photo)
-        precond = c4.checkbox("Policy 4.1 amended (simulates your C1 ruling)", value=precond)
+        precond = c4.checkbox("Policy 4.1 amended (your C1 ruling)", value=precond)
         go = st.form_submit_button("Submit FNOL → run triage", type="primary")
 
     if not go:
         return
-    trace = {"amount_vnd": amount, "policy": policy, "photo": photo, "precondition_met": precond, "description": desc}
-
-    def verdict(kind, title, body, cite):
-        color = {"approve": "#3FB950", "reject": "#F85149", "human": "#F2A65A"}[kind]
-        st.markdown(
-            f'<div class="se-catch" style="border-left-color:{color}">'
-            f'<div class="chead"><span class="cnum" style="color:{color}">{esc(title)}</span></div>'
-            f'<div class="se-body">{esc(body)}</div>'
-            f'<div class="se-trace">{esc(cite)}</div></div>',
-            unsafe_allow_html=True,
-        )
-        trace["verdict"] = title
-
-    if policy == "lapsed":
-        verdict("reject", "REJECTED — lapsed policy",
-                "Submission rejected with the lapse reason. This rejection IS R1-AC2.",
-                "executes R1-AC2 · born from W1 (CEO: customers file the loss in the app) · localized copy per UX turn (F9)")
-    elif not photo:
-        verdict("reject", "BLOCKED — no photo attached",
-                "FNOL requires at least one photo before a claim record is created.",
-                "executes R1-AC1 · born from W1")
-    elif any(k in desc.lower() for k in FRAUD_KEYWORDS):
-        verdict("human", "ASSIGNED TO HUMAN INVESTIGATOR",
-                "The AI never clears its own fraud flag. Investigator receives a redacted ticket; "
-                "full payload is RBAC-gated and access-logged. Record retained ten years.",
-                "executes R4-AC1/AC2 · born from W6, W7 · redaction per Security turn (F11) · flag immutable once set")
-    elif amount < 5_000_000 and precond:
-        verdict("approve", "INSTANT APPROVED — payout due in 48:00:00",
-                "No human in the path (launch precondition met). Exactly one disbursement per claim id, "
-                "measured approved_at → paid_at; a structured decision_event was emitted to the audit log.",
-                "executes R2-AC1 · born from W2/W3 · idempotency per Eng turn (F4) · audit event per DevOps turn (F10) · 48h bound per QA turn (F3)")
-    elif amount < 5_000_000:
-        verdict("human", "ROUTED TO HUMAN ADJUSTER — precondition unmet",
-                "Policy 4.1 is not yet amended, so the manual-review fallback applies until your launch "
-                "precondition is satisfied.",
-                "executes the R2 amendment (F2) · your C1 ruling is the gate")
-    else:
-        verdict("human", "ROUTED TO HUMAN ADJUSTER — decision within 3 business days",
-                "High-value claims get a human decision; escalates to claims ops on breach.",
-                "executes R6-AC1/AC2 · born from W8")
-    st.download_button("⬇ Download execution trace (test vector)", json.dumps(trace, indent=2), "fnol-trace.json")
+    claim = {"amount": amount, "policy": policy, "photo": photo, "precondition": precond, "description": desc}
+    entry = compiler.evaluate(table, claim)
+    color = {"approve": "#3FB950", "reject": "#F85149", "block": "#F85149",
+             "investigate": "#F2A65A", "review": "#F2A65A"}[entry.verdict]
     st.markdown(
-        '<p class="se-trace">100% deterministic Python — no model ran. The rules this simulator enforces '
-        "are the signed corrected spec of this run plus your Decision Console rulings.</p>",
+        f'<div class="se-catch" style="border-left-color:{color}">'
+        f'<div class="chead"><span class="cnum" style="color:{color}">{esc(entry.title)}</span></div>'
+        f'<div class="se-body">{esc(entry.body)}</div>'
+        f'<div class="se-trace">{esc(entry.cites)} · table v{table.version} · {esc(table.baseline_id)}</div></div>',
         unsafe_allow_html=True,
     )
-
-
-
-
-# ---------------------------------------------------------------- chat terminal
-ROLE_SHORT = {"po": "PO", "ba": "BA", "ux": "UX", "sa": "SA", "eng": "ENG", "qa": "QA",
-              "devops": "DO", "security": "SEC", "compliance": "CMP", "sm": "SM", "arbiter": "ARB"}
-
-ROLE_KEYWORDS = {
-    "security": ["fraud", "security", "photo", "attack", "leak", "rbac"],
-    "compliance": ["regulation", "circular", "compliance", "legal", "audit", "e-kyc", "ekyc"],
-    "eng": ["code", "sla", "payout", "migration", "idempot", "retry", "database", "schema"],
-    "qa": ["test", "ac", "measur", "verify", "edge"],
-    "devops": ["monitor", "observab", "log", "deploy", "cost"],
-    "ux": ["copy", "screen", "customer", "localiz", "message", "ui"],
-}
-
-
-def _pick_role(question: str) -> str:
-    q = question.lower()
-    for role, kws in ROLE_KEYWORDS.items():
-        if any(k in q for k in kws):
-            return role
-    return "po"
-
-
-def presence_rail_html(active: set, done: set) -> str:
-    chips = ""
-    for key_, short in ROLE_SHORT.items():
-        color = team.role_color(key_)
-        cls = "active" if key_ in active else ("done" if key_ in done else "")
-        chips += (f'<span class="se-rail-chip {cls}" style="--c:{color};--pulse:{color}55">'
-                  f'{esc(short)}</span>')
-    return f'<div class="se-rail-chips">{chips}</div>'
-
-
-def chat_msg_html(role_key: str, message: str, stance: str = "", cursor: bool = False) -> str:
-    label = team.role_label(role_key)
-    color = team.role_color(role_key)
-    cur = " ▌" if cursor else ""
-    stance_html = f' · {esc(stance)}' if stance else ""
-    return (f'<div class="se-chatmsg"><div class="who" style="color:{color}">{esc(label)}{stance_html}</div>'
-            f'<div class="se-turn" style="border-left-color:{color};margin:0">'
-            f'<div class="tmsg" style="margin-top:0">{esc(message)}{cur}</div></div></div>')
-
-
-def render_chat(run: dict) -> None:
-    s = run["stages"]
-    col_chat, col_rail = st.columns([2.6, 1.05], gap="large")
-
-    feed = st.session_state.setdefault("chat_feed", [])
-
-    with col_rail:
-        st.markdown('<div class="se-rail-title">team</div>', unsafe_allow_html=True)
-        rail_ph = st.empty()
-        rail_ph.markdown(presence_rail_html(set(), set(ROLE_SHORT)), unsafe_allow_html=True)
-        st.markdown('<div class="se-rail-title" style="margin-top:14px">execution</div>', unsafe_allow_html=True)
-        usage = run["meta"]["usage"]
-        odo_ph = st.empty()
-        odo_ph.markdown(f'<div class="se-odo">tokens <b>{usage["input_tokens"] + usage["output_tokens"]:,}</b>'
-                        f' · gate <b>{s["gate"]["errors"]}→{s["gate_round2"]["errors"]}</b>'
-                        f' · score <b>{s["grade_round1"]["overall_score"]}→{s["grade_round2"]["overall_score"]}</b></div>',
-                        unsafe_allow_html=True)
-        st.markdown(f'<p class="se-trace" style="margin-top:10px">{esc(run["meta"].get("kind",""))} · '
-                    f'{len(s["debate"]["turns"])} turns · {len(s["debate"]["arbiter"]["amendments"])} amendments</p>',
-                    unsafe_allow_html=True)
-        st.download_button("⬇ eval-log", json.dumps(run, indent=2, ensure_ascii=False), "run.json", use_container_width=True)
-        if sponsored.available():
-            st.markdown(f'<p class="se-trace">sponsored live: {sponsored.remaining_runs()} runs left today</p>', unsafe_allow_html=True)
-
-    with col_chat:
-        if not feed:
-            st.markdown('<p class="se-sysmsg">— recorded sequence loaded · press play to watch the team work, '
-                        'or type your thought below —</p>', unsafe_allow_html=True)
-            b1, b2, _ = st.columns([1.4, 1.2, 2])
-            play = b1.button("▶ Play the run", type="primary", use_container_width=True)
-            instant = b2.button("Show transcript", use_container_width=True)
-            if play or instant:
-                st.session_state["chat_played"] = True
-                _play_into_chat(run, col_chat, rail_ph, animate=play)
-                st.rerun()
-        else:
-            for item in feed:
-                _render_feed_item(item)
-
-    prompt = st.chat_input("Nhập suy nghĩ của bạn vào cuộc debate… (your message carries top authority)")
-    if prompt:
-        _handle_human_message(run, prompt)
-        st.rerun()
-
-
-def _render_feed_item(item: dict) -> None:
-    kind = item["kind"]
-    if kind == "system":
-        st.markdown(f'<p class="se-sysmsg">— {esc(item["text"])} —</p>', unsafe_allow_html=True)
-    elif kind == "router":
-        st.markdown(f'<p class="se-sysmsg">ROUTER → {esc(item["text"])}</p>', unsafe_allow_html=True)
-    elif kind == "turn":
-        st.markdown(chat_msg_html(item["role"], item["message"], item.get("stance", "")), unsafe_allow_html=True)
-    elif kind == "human":
-        st.markdown(f'<div class="se-human"><div class="who" style="color:#A3B3FF;font-family:JetBrains Mono,monospace;'
-                    f'font-size:11px;text-transform:uppercase;letter-spacing:.08em">You · authority: highest</div>'
-                    f'{esc(item["text"])}</div>', unsafe_allow_html=True)
-
-
-def _play_into_chat(run: dict, container, rail_ph, animate: bool) -> None:
-    s = run["stages"]
-    feed = st.session_state["chat_feed"]
-    feed.append({"kind": "system", "text": f'RECORDED REPLAY · {run["meta"].get("kind","run")} · real engine sequence · not live inference'})
-    done: set = set()
-    with container:
-        for phase in s["debate"]["phases"]:
-            feed.append({"kind": "system", "text": phase["title"]})
-            if animate:
-                st.markdown(f'<p class="se-sysmsg">— {esc(phase["title"])} —</p>', unsafe_allow_html=True)
-            for ev in phase["events"]:
-                if ev["type"] == "router" and not ev.get("close_phase"):
-                    feed.append({"kind": "router", "text": ev["focused_question"]})
-                    if animate:
-                        st.markdown(f'<p class="se-sysmsg">ROUTER → {esc(ev["focused_question"])}</p>', unsafe_allow_html=True)
-                        time.sleep(0.6)
-                elif ev["type"] == "turn":
-                    if animate:
-                        rail_ph.markdown(presence_rail_html({ev["role"]}, done), unsafe_allow_html=True)
-                        ph = st.empty()
-                        msg = ev["message"]
-                        step = max(3, len(msg) // 60)
-                        for i in range(0, len(msg), step):
-                            ph.markdown(chat_msg_html(ev["role"], msg[: i + step], ev["stance"], cursor=True), unsafe_allow_html=True)
-                            time.sleep(0.03)
-                        ph.markdown(chat_msg_html(ev["role"], msg, ev["stance"]), unsafe_allow_html=True)
-                    done.add(ev["role"])
-                    feed.append({"kind": "turn", "role": ev["role"], "message": ev["message"], "stance": ev["stance"]})
-        arb = s["debate"]["arbiter"]
-        feed.append({"kind": "turn", "role": "arbiter",
-                     "message": arb["summary"], "stance": "ruling"})
-        if animate:
-            rail_ph.markdown(presence_rail_html({"arbiter"}, done), unsafe_allow_html=True)
-            st.markdown(chat_msg_html("arbiter", arb["summary"], "ruling"), unsafe_allow_html=True)
-        feed.append({"kind": "system", "text": "sequence complete · type below to challenge the team, or open Decide to rule"})
-
-
-def _handle_human_message(run: dict, prompt: str) -> None:
-    feed = st.session_state.setdefault("chat_feed", [])
-    feed.append({"kind": "human", "text": prompt})
-    run["events"].append({"seq": len(run["events"]) + 1, "type": "human_interjection", "text": prompt})
-    api_key_ = sponsored.key()
-    role = _pick_role(prompt)
-    if not api_key_:
-        feed.append({"kind": "system",
-                     "text": f"recorded to the eval-log · {team.role_label(role)} would answer here — "
-                             "no inference key on this deployment (add one in Run live, or sponsored mode)"})
-        return
-    s = run["stages"]
-    from engine.schemas import Turn as TurnSchema
-    llm = LLM(api_key=api_key_, model=sponsored.SPONSORED_MODEL, token_budget=sponsored.PER_RUN_TOKEN_BUDGET)
-    try:
-        turn = llm.complete_json(
-            system=(f"You are the {team.role_label(role)} answering the HUMAN OWNER directly in the team chat. "
-                    "Their word carries the highest authority in the truth hierarchy. Answer their point "
-                    "concretely against the run context, max 90 words, cite requirement/claim ids."),
-            user=(f"RUN CONTEXT (claims + findings, abbreviated):\n"
-                  f"{[c['id'] + ': ' + c['claim'] for c in s['wiki']['claims']]}\n"
-                  f"{[f['id'] + ': ' + f['description'][:80] for f in s['grade_round1']['findings']]}\n\n"
-                  f"HUMAN SAYS: {prompt}"),
-            schema=TurnSchema,
-        )
-        feed.append({"kind": "turn", "role": role, "message": turn.message, "stance": "answers you"})
-        run["events"].append({"seq": len(run["events"]) + 1, "type": "role_answer", "role": role})
-        sponsored.record_run(llm.usage.total)
-    except Exception as err:
-        feed.append({"kind": "system", "text": f"inference failed: {err}"})
-
-
-# ---------------------------------------------------------------- run bar
-WORKSPACES = ["💬 Chat", "📋 Report", "🧪 Test", "✍ Decide"]
-
-
-def render_run_bar(run: dict) -> str:
-    meta = run["meta"]
-    kind = meta.get("kind", "run")
-    kcolor = {"scripted-demo": "#F2A65A", "live": "#3FB950", "real-inference": "#3FB950"}.get(kind, "#9AA3B2")
-    score = run["stages"]["grade_round2"]["overall_score"]
-    st.markdown(
-        f'<div class="se-runbar"><span class="idn"><b style="color:#E7EAF0">AnDigi</b> · claims red-team</span>'
-        f'<span class="kind" style="color:{kcolor};border-color:{kcolor}66">{esc(kind)}</span>'
-        f'<span class="idn">11 agents · 5 phases · {score}/100</span>'
-        f'<span class="idn" style="margin-left:auto">agents do the work · you sign off</span></div>',
-        unsafe_allow_html=True,
-    )
-    ws = st.radio("workspace", WORKSPACES, horizontal=True, label_visibility="collapsed",
-                  key="workspace")
-    return ws
+    event = {"seq": len(run["events"]) + 1, "type": "decision_event", "rule": entry.id,
+             "verdict": entry.verdict, "table_version": table.version, "claim": claim}
+    run["events"].append(event)
+    st.download_button("⬇ Download decision_event (audit trail)", json.dumps(event, indent=2), "decision-event.json")
+    st.markdown('<p class="se-trace">deterministic execution · the decision_event above was appended to this run\'s eval-log (B4 capture)</p>', unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- decision console
@@ -659,13 +467,28 @@ def render_console(run: dict) -> None:
                 "rulings": draft["rulings"], "reviews": draft["reviews"],
                 "rules_approved": [r.id for r in approved],
             }
+            # materialize accepted/edited reviews into the corrected spec (trust gap fix)
+            from engine.debate import apply_amendments as _apply
+            from engine.schemas import AmendmentSet as _ASet, DraftSpec as _DSpec
+            arb_set = _ASet.model_validate(run["stages"]["debate"]["arbiter"])
+            kept = []
+            for i, am in enumerate(arb_set.amendments):
+                rv = next((r for r in draft["reviews"] if r["amendment_index"] == i), None)
+                if rv and rv["action"] == "reject":
+                    continue
+                if rv and rv["action"] == "edit" and rv.get("edited_after"):
+                    am = am.model_copy(update={"after": rv["edited_after"]})
+                kept.append(am)
+            arb_set = arb_set.model_copy(update={"amendments": kept})
+            run["stages"]["corrected_spec"] = _apply(
+                _DSpec.model_validate(run["stages"]["draft_spec"]), arb_set).model_dump()
             run["signoff"] = signoff
             seq = len(run["events"])
             for i, r in enumerate(draft["rulings"]):
                 run["events"].append({"seq": seq + i + 1, "type": "decision_ruled", "choice": r["choice"]})
             run["events"].append({"seq": len(run["events"]) + 1, "type": "signoff_completed",
                                    "baseline": signoff["baseline_id"], "rules": signoff["rules_approved"]})
-            run["lifecycle"].append({"state": "shipped", "note": signoff["baseline_id"]})
+            run["lifecycle"].append({"state": "baseline_signed", "note": signoff["baseline_id"]})
             save_run(run, f"signed-{time.strftime('%Y%m%d-%H%M%S')}")
             st.session_state["signoff"] = signoff
             st.session_state["signoff_state"] = "signed"
@@ -740,7 +563,7 @@ def render_baseline(run: dict, signoff: dict) -> None:
 def render_trace(run: dict) -> None:
     s = run["stages"]
     states = [x["state"] for x in run["lifecycle"]]
-    order = ["draft", "graded", "advisor", "sign-off", "shipped"]
+    order = ["draft", "graded", "advisor", "sign-off", "baseline_signed"]
     last = states[-1] if states else "draft"
     stepper = '<span class="se-step-arrow"> → </span>'.join(
         f'<span class="se-step {"active" if st_ == last else ("done" if st_ in states else "")}">{esc(st_)}</span>'
