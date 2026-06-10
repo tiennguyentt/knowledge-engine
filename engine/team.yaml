@@ -96,7 +96,7 @@ phases:
     eligible: [sm]
 
 limits:
-  max_router_iterations_per_phase: 2
+  max_router_iterations_per_phase: 3
   max_summoned_roles: 3
   max_grading_rounds: 3
   token_budget: 150000

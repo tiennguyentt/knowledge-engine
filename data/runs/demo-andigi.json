@@ -484,6 +484,50 @@
           "description": "R1 lacks negative paths beyond lapsed policy: no photo-upload failure or duplicate-FNOL handling.",
           "suggested_fix": "Add duplicate-claim and upload-failure ACs.",
           "assigned_role": "ba"
+        },
+        {
+          "id": "F9",
+          "dimension": "D2",
+          "priority": "P2",
+          "requirement_id": "R1",
+          "evidence_ref": "W1",
+          "claim_class_violation": "",
+          "description": "The lapsed-policy rejection (R1-AC2) is user-facing and terse: Vietnamese-first customers see raw text with no plain-language explanation or localization.",
+          "suggested_fix": "Add an AC for localized, plain-language rejection copy with an in-app explainer.",
+          "assigned_role": "ux"
+        },
+        {
+          "id": "F10",
+          "dimension": "D2",
+          "priority": "P1",
+          "requirement_id": "R2",
+          "evidence_ref": "W2",
+          "claim_class_violation": "",
+          "description": "Instant auto-approval produces zero structured observability: no audit event, no cost attribution, no incident trail for an AI decision that moves money.",
+          "suggested_fix": "Require a structured decision_event per triage to an immutable audit log.",
+          "assigned_role": "devops"
+        },
+        {
+          "id": "F11",
+          "dimension": "D2",
+          "priority": "P1",
+          "requirement_id": "R4",
+          "evidence_ref": "W6",
+          "claim_class_violation": "",
+          "description": "The fraud path assigns an investigator but defines no access control, redaction, or access logging for claim descriptions and photos passed downstream.",
+          "suggested_fix": "Redact investigator tickets; gate full payloads behind RBAC with access logging.",
+          "assigned_role": "security"
+        },
+        {
+          "id": "F12",
+          "dimension": "D4",
+          "priority": "P2",
+          "requirement_id": "R3",
+          "evidence_ref": "",
+          "claim_class_violation": "",
+          "description": "Deferred P2 items and the two unresolved human decisions carry silently into sprint planning with no readiness list.",
+          "suggested_fix": "Surface an explicit launch-readiness / known-open-items section in the corrected spec.",
+          "assigned_role": "sm"
         }
       ],
       "scores": {
@@ -571,17 +615,46 @@
             },
             {
               "type": "router",
+              "issue_id": "F9",
+              "summoned_roles": [
+                "ux"
+              ],
+              "focused_question": "The lapsed-policy rejection is user-facing and terse. What must R1 carry so a Vietnamese-first customer understands why they were rejected?",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 2
+            },
+            {
+              "type": "turn",
+              "phase": "product",
+              "role": "ux",
+              "issue_id": "F9",
+              "work_notes": {
+                "observation": "Walked the R1 rejection path as a first-time customer reading the lapse message.",
+                "evidence_refs": [
+                  "F9",
+                  "W1"
+                ],
+                "risk": "A raw rejection with no explanation reads as a broken app, not a lapsed policy.",
+                "proposed_change": "AC on R1: localized plain-language rejection copy + an in-app 'what this means / how to reinstate' explainer.",
+                "confidence": "high",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "F9: the rejection a customer sees IS the product in that moment. R1 needs an AC for localized, plain-language copy — state the lapse reason, what it means, and the reinstatement path — Vietnamese first, English fallback. Raw error strings to a customer who just had an accident is how trust dies in one screen.",
+              "refs": [
+                "F9",
+                "R1"
+              ]
+            },
+            {
+              "type": "router",
               "issue_id": "",
               "summoned_roles": [],
               "focused_question": "",
               "close_phase": true,
-              "net_movement": "R2 gains a policy-amendment launch precondition and an explicit manual-review fallback while it is unmet. The policy change itself is escalated to the human decision list.",
-              "iteration": 2
-            },
-            {
-              "type": "no_objection",
-              "phase": "product",
-              "role": "ux"
+              "net_movement": "R2 gains a policy-amendment launch precondition and a manual-review fallback; R1 gains a localized rejection-copy AC. The policy change itself is escalated to the human decision list.",
+              "iteration": 3
             }
           ]
         },
@@ -710,17 +783,46 @@
             },
             {
               "type": "router",
+              "issue_id": "F10",
+              "summoned_roles": [
+                "devops"
+              ],
+              "focused_question": "An AI decision that moves money currently emits no structured trail. What observability must R2 require?",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 2
+            },
+            {
+              "type": "turn",
+              "phase": "quality",
+              "role": "devops",
+              "issue_id": "F10",
+              "work_notes": {
+                "observation": "Traced the auto-approval path for audit events; found none between triage and disbursement.",
+                "evidence_refs": [
+                  "F10",
+                  "W2"
+                ],
+                "risk": "An unobservable money-moving decision is an incident investigation nightmare and an audit gap.",
+                "proposed_change": "Require decision_event {claim_id, triage_score, fraud_flag, latency, engine_version} to an immutable log, 90-day queryable, no PII in payload.",
+                "confidence": "high",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "F10: every instant approval must emit a structured decision_event — claim id, triage score, fraud flag, latency, engine version — to an immutable audit log, queryable for 90 days, with no PII in the payload. Without it, the first regulator question ('why did the AI approve this claim?') has no answer, and the first incident has no trail.",
+              "refs": [
+                "F10",
+                "R2"
+              ]
+            },
+            {
+              "type": "router",
               "issue_id": "",
               "summoned_roles": [],
               "focused_question": "",
               "close_phase": true,
-              "net_movement": "R2's payout language is replaced by the explicit 48-hour bound measured approved_at→paid_at, which doubles as R7's acceptance test. No open quality findings remain.",
-              "iteration": 2
-            },
-            {
-              "type": "no_objection",
-              "phase": "quality",
-              "role": "devops"
+              "net_movement": "R2's payout language becomes the explicit 48-hour bound measured approved_at→paid_at, and every triage decision now emits a structured audit event. No open quality findings remain.",
+              "iteration": 3
             }
           ]
         },
@@ -769,17 +871,101 @@
             },
             {
               "type": "router",
+              "issue_id": "F11",
+              "summoned_roles": [
+                "security"
+              ],
+              "focused_question": "Fraud-flagged claims route descriptions and photos to investigators. What protects that sensitive payload?",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 2
+            },
+            {
+              "type": "turn",
+              "phase": "risk",
+              "role": "security",
+              "issue_id": "F11",
+              "work_notes": {
+                "observation": "Followed a fraud-flagged claim payload from triage to the investigator ticket.",
+                "evidence_refs": [
+                  "F11",
+                  "W6",
+                  "W7"
+                ],
+                "risk": "Full descriptions and photos in tickets leak sensitive data to anyone with queue access.",
+                "proposed_change": "Redacted ticket (<=80-char summary + claim id); full payload behind RBAC with access logging; fraud flag immutable once set.",
+                "confidence": "high",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "F11: the investigator ticket must carry a redacted summary and the claim id only; the full description and photos sit behind role-based access with every view logged. And the fraud flag is immutable once set — neither the customer, the agent, nor the AI clears it; only the named investigator closes it with a recorded decision (W6, retention per W7).",
+              "refs": [
+                "F11",
+                "R4"
+              ]
+            },
+            {
+              "type": "router",
               "issue_id": "",
               "summoned_roles": [],
               "focused_question": "",
               "close_phase": true,
-              "net_movement": "The invented 90-day re-verification obligation is removed; R3 is rewritten to once-at-onboarding with risk-based re-verification, tagged for compliance confirmation. P0 grounding failure resolved.",
-              "iteration": 2
+              "net_movement": "The invented 90-day obligation is removed and R3 rewritten to risk-based re-verification; the fraud path gains redaction, RBAC with access logging, and an immutable flag. P0 grounding failure resolved.",
+              "iteration": 3
+            }
+          ]
+        },
+        {
+          "key": "synthesis",
+          "title": "Synthesis",
+          "eligible": [
+            "sm"
+          ],
+          "events": [
+            {
+              "type": "router",
+              "issue_id": "F12",
+              "summoned_roles": [
+                "sm"
+              ],
+              "focused_question": "Deferred P2s and two human decisions remain open. What must the spec surface so sprint planning has no surprises?",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 1
             },
             {
-              "type": "no_objection",
-              "phase": "risk",
-              "role": "security"
+              "type": "turn",
+              "phase": "synthesis",
+              "role": "sm",
+              "issue_id": "F12",
+              "work_notes": {
+                "observation": "Collected every deferred item and open decision across the four phases.",
+                "evidence_refs": [
+                  "F12",
+                  "F6",
+                  "F9"
+                ],
+                "risk": "Silent carry-over is how sprint 1 inherits invisible risk and blows its commitment.",
+                "proposed_change": "Add an explicit launch-readiness section: open decisions with owners, deferred P2s, and the policy precondition status.",
+                "confidence": "medium",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "F12: the corrected spec must end with a launch-readiness list — the two human decisions with owners, the deferred P2s (upload-failure paths, localization backlog), and the policy-amendment precondition status. Sprint planning reads that list, not the whole debate. No invisible carry-over.",
+              "refs": [
+                "F12",
+                "R3",
+                "R1"
+              ]
+            },
+            {
+              "type": "router",
+              "issue_id": "",
+              "summoned_roles": [],
+              "focused_question": "",
+              "close_phase": true,
+              "net_movement": "All deferred items and open decisions are consolidated into an explicit launch-readiness list with owners. Synthesis hands a clean state to the arbiter.",
+              "iteration": 2
             }
           ]
         }
@@ -831,6 +1017,28 @@
             "F2",
             "R2",
             "R6"
+          ]
+        },
+        {
+          "phase": "product",
+          "role": "ux",
+          "issue_id": "F9",
+          "work_notes": {
+            "observation": "Walked the R1 rejection path as a first-time customer reading the lapse message.",
+            "evidence_refs": [
+              "F9",
+              "W1"
+            ],
+            "risk": "A raw rejection with no explanation reads as a broken app, not a lapsed policy.",
+            "proposed_change": "AC on R1: localized plain-language rejection copy + an in-app 'what this means / how to reinstate' explainer.",
+            "confidence": "high",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "F9: the rejection a customer sees IS the product in that moment. R1 needs an AC for localized, plain-language copy — state the lapse reason, what it means, and the reinstatement path — Vietnamese first, English fallback. Raw error strings to a customer who just had an accident is how trust dies in one screen.",
+          "refs": [
+            "F9",
+            "R1"
           ]
         },
         {
@@ -904,6 +1112,28 @@
           ]
         },
         {
+          "phase": "quality",
+          "role": "devops",
+          "issue_id": "F10",
+          "work_notes": {
+            "observation": "Traced the auto-approval path for audit events; found none between triage and disbursement.",
+            "evidence_refs": [
+              "F10",
+              "W2"
+            ],
+            "risk": "An unobservable money-moving decision is an incident investigation nightmare and an audit gap.",
+            "proposed_change": "Require decision_event {claim_id, triage_score, fraud_flag, latency, engine_version} to an immutable log, 90-day queryable, no PII in payload.",
+            "confidence": "high",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "F10: every instant approval must emit a structured decision_event — claim id, triage score, fraud flag, latency, engine version — to an immutable audit log, queryable for 90 days, with no PII in the payload. Without it, the first regulator question ('why did the AI approve this claim?') has no answer, and the first incident has no trail.",
+          "refs": [
+            "F10",
+            "R2"
+          ]
+        },
+        {
           "phase": "risk",
           "role": "compliance",
           "issue_id": "F1",
@@ -924,6 +1154,53 @@
           "refs": [
             "F1",
             "R3"
+          ]
+        },
+        {
+          "phase": "risk",
+          "role": "security",
+          "issue_id": "F11",
+          "work_notes": {
+            "observation": "Followed a fraud-flagged claim payload from triage to the investigator ticket.",
+            "evidence_refs": [
+              "F11",
+              "W6",
+              "W7"
+            ],
+            "risk": "Full descriptions and photos in tickets leak sensitive data to anyone with queue access.",
+            "proposed_change": "Redacted ticket (<=80-char summary + claim id); full payload behind RBAC with access logging; fraud flag immutable once set.",
+            "confidence": "high",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "F11: the investigator ticket must carry a redacted summary and the claim id only; the full description and photos sit behind role-based access with every view logged. And the fraud flag is immutable once set — neither the customer, the agent, nor the AI clears it; only the named investigator closes it with a recorded decision (W6, retention per W7).",
+          "refs": [
+            "F11",
+            "R4"
+          ]
+        },
+        {
+          "phase": "synthesis",
+          "role": "sm",
+          "issue_id": "F12",
+          "work_notes": {
+            "observation": "Collected every deferred item and open decision across the four phases.",
+            "evidence_refs": [
+              "F12",
+              "F6",
+              "F9"
+            ],
+            "risk": "Silent carry-over is how sprint 1 inherits invisible risk and blows its commitment.",
+            "proposed_change": "Add an explicit launch-readiness section: open decisions with owners, deferred P2s, and the policy precondition status.",
+            "confidence": "medium",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "F12: the corrected spec must end with a launch-readiness list — the two human decisions with owners, the deferred P2s (upload-failure paths, localization backlog), and the policy-amendment precondition status. Sprint planning reads that list, not the whole debate. No invisible carry-over.",
+          "refs": [
+            "F12",
+            "R3",
+            "R1"
           ]
         }
       ],
@@ -1137,7 +1414,7 @@
           "dimension": "D2",
           "item": "At least 3 edge cases beyond sources",
           "result": "PASS",
-          "note": "Fallback path, in-flight claims, disbursement failure/idempotency."
+          "note": "Fallback path, in-flight claims, disbursement failure/idempotency, audit events, redacted fraud tickets."
         },
         {
           "dimension": "D2",
@@ -1333,7 +1610,7 @@
     {
       "seq": 7,
       "type": "debate_done",
-      "turns": 6,
+      "turns": 10,
       "amendments": 5
     },
     {

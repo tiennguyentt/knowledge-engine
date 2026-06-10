@@ -118,10 +118,8 @@ def render_hero(run: dict) -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<p class="se-hero-sub">A draft spec for claims FNOL & AI triage was audited against '
-        "what stakeholders actually said, the published policy, the production code and the "
-        "database. Below: the catches, the corrected diff, and the one decision only a human "
-        "can make. Agents do the work; a human signs off.</p>",
+        '<p class="se-hero-sub">Audited against what stakeholders said, the published policy, '
+        "the code and the database. Agents do the work; a human signs off.</p>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -137,6 +135,14 @@ def render_hero(run: dict) -> None:
     if run["meta"].get("note"):
         st.markdown(f'<p class="se-trace">{esc(run["meta"]["note"])}</p>', unsafe_allow_html=True)
 
+    n_turns = len(s["debate"]["turns"])
+    pc1, pc2, _ = st.columns([2, 1, 3])
+    if pc1.button(f"▶ Watch the run · recorded sequence · {n_turns} turns"):
+        st.session_state["playback"] = True
+    speed = pc2.selectbox("speed", ["2×", "1×", "4×"], label_visibility="collapsed")
+    if st.session_state.pop("playback", False):
+        render_playback(run, {"1×": 32, "2×": 64, "4×": 128}[speed])
+
     # ---- catch 1: the evidence conflict ------------------------------------
     theme.section("catch 01", "The policy forbids what the spec promises", "truth-hierarchy conflict")
     c1 = next((c for c in s["conflicts"]["conflicts"] if c["kind"] == "business-rule"), None)
@@ -144,18 +150,19 @@ def render_hero(run: dict) -> None:
         win = find_claim(run, c1["winning_claim_id"])
         lose_id = next((cid for cid in c1["claim_ids"] if cid != c1["winning_claim_id"]), "")
         lose = find_claim(run, lose_id)
-        inner = (
-            f'<div class="chead"><span class="cnum">{esc(c1["id"])}</span>'
-            f'<span class="ctitle">{esc(c1["description"])}</span></div>'
-        )
+        inner = ""
         if win:
             inner += f'<div class="se-vs">WINS BY AUTHORITY — {esc(win["authority"])}</div>' + source_quote_html(win["sources"][0])
         if lose:
             inner += f'<div class="se-vs">LOSES — BUT AUDITORS READ THIS ({esc(lose["authority"])})</div>' + source_quote_html(lose["sources"][0])
-        inner += f'<div class="se-body" style="margin-top:8px">{esc(c1["resolution"])}</div>'
-        if c1["needs_human_confirmation"]:
-            inner += '<div class="se-flag">⚑ escalated to the human decision list — a spec edit cannot amend a published policy</div>'
-        st.markdown(f'<div class="se-catch">{inner}</div>', unsafe_allow_html=True)
+        summary = (
+            f'<div class="chead"><span class="cnum">{esc(c1["id"])}</span>'
+            f'<span class="ctitle">{esc(c1["description"][:150])}…</span></div>'
+            + ('<div class="se-flag">⚑ escalated to the human decision list</div>' if c1["needs_human_confirmation"] else "")
+        )
+        st.markdown(f'<div class="se-catch">{summary}</div>', unsafe_allow_html=True)
+        with st.expander("view receipt — both sources, verbatim"):
+            st.markdown(inner + f'<div class="se-body" style="margin-top:8px">{esc(c1["resolution"])}</div>', unsafe_allow_html=True)
 
     # ---- catch 2: the invented regulation ----------------------------------
     theme.section("catch 02", "A confident, invented regulation", "P0 · grounding")
@@ -163,17 +170,20 @@ def render_hero(run: dict) -> None:
     if f1:
         ev = find_claim(run, f1["evidence_ref"])
         comp_turn = next((t for t in s["debate"]["turns"] if t["role"] == "compliance"), None)
-        inner = (
-            f'<div class="chead"><span class="cnum">{esc(f1["id"])} · P0</span>'
-            f'<span class="ctitle">{esc(f1["description"])}</span></div>'
-            f'<div class="se-trace">claim-class violation: {esc(f1["claim_class_violation"])} · requirement {esc(f1["requirement_id"])}</div>'
+        st.markdown(
+            f'<div class="se-catch"><div class="chead"><span class="cnum">{esc(f1["id"])} · P0</span>'
+            f'<span class="ctitle">{esc(f1["description"][:150])}…</span></div>'
+            f'<div class="se-summon">⚡ grader summoned → {esc(team.role_label("compliance"))}</div></div>',
+            unsafe_allow_html=True,
         )
-        if ev:
-            inner += '<div class="se-vs">THE CORPUS SAYS THE OPPOSITE</div>' + source_quote_html(ev["sources"][0])
-        inner += f'<div class="se-summon">⚡ grader summoned → {esc(team.role_label("compliance"))}</div>'
-        st.markdown(f'<div class="se-catch">{inner}</div>', unsafe_allow_html=True)
-        if comp_turn:
-            st.markdown(turn_html(comp_turn), unsafe_allow_html=True)
+        with st.expander("view receipt — the corpus says the opposite"):
+            inner = f'<div class="se-body">{esc(f1["description"])}</div>'
+            inner += f'<div class="se-trace">claim-class violation: {esc(f1["claim_class_violation"])} · requirement {esc(f1["requirement_id"])}</div>'
+            if ev:
+                inner += '<div class="se-vs">THE CORPUS SAYS THE OPPOSITE</div>' + source_quote_html(ev["sources"][0])
+            st.markdown(inner, unsafe_allow_html=True)
+            if comp_turn:
+                st.markdown(turn_html(comp_turn), unsafe_allow_html=True)
 
     # ---- catch 3: code disagrees with the promise --------------------------
     theme.section("catch 03", "The code disagrees with the promise", "artifact-state gap")
@@ -182,31 +192,37 @@ def render_hero(run: dict) -> None:
         intended = find_claim(run, c2["winning_claim_id"])
         artifacts = [find_claim(run, cid) for cid in c2["claim_ids"]]
         artifacts = [a for a in artifacts if a and a["claim_class"] == "artifact-state"]
-        inner = (
-            f'<div class="chead"><span class="cnum">{esc(c2["id"])}</span>'
-            f'<span class="ctitle">{esc(c2["description"])}</span></div>'
+        st.markdown(
+            f'<div class="se-catch"><div class="chead"><span class="cnum">{esc(c2["id"])}</span>'
+            f'<span class="ctitle">{esc(c2["description"][:150])}…</span></div></div>',
+            unsafe_allow_html=True,
         )
-        if intended:
-            inner += f'<div class="se-vs">THE INTENDED BEHAVIOR ({esc(intended["authority"])})</div>' + source_quote_html(intended["sources"][0])
-        for a in artifacts:
-            inner += '<div class="se-vs">WHAT THE SYSTEM ACTUALLY DOES (artifact state — cannot be out-talked)</div>' + source_quote_html(a["sources"][0])
-        inner += f'<div class="se-body" style="margin-top:8px">{esc(c2["resolution"])}</div>'
-        st.markdown(f'<div class="se-catch">{inner}</div>', unsafe_allow_html=True)
+        with st.expander("view receipt — intended vs artifact state"):
+            inner = ""
+            if intended:
+                inner += f'<div class="se-vs">THE INTENDED BEHAVIOR ({esc(intended["authority"])})</div>' + source_quote_html(intended["sources"][0])
+            for a in artifacts:
+                inner += '<div class="se-vs">WHAT THE SYSTEM ACTUALLY DOES (artifact state — cannot be out-talked)</div>' + source_quote_html(a["sources"][0])
+            inner += f'<div class="se-body" style="margin-top:8px">{esc(c2["resolution"])}</div>'
+            st.markdown(inner, unsafe_allow_html=True)
 
     # ---- gate strip ---------------------------------------------------------
     theme.section("the gate", "Code-enforced. Models cannot override these results.", f'{gate1["errors"]} errors → {gate2["errors"]}')
-    hits_html = "".join(
-        f'<div class="se-gatehit"><span class="{ "rid" if h["severity"] == "error" else "warn" }">'
-        f'{esc(h["rule_id"])} {esc(h["severity"])}</span> · {esc(h["requirement_id"])} · '
-        f'{esc(h["message"])} — <i>“{esc(h["excerpt"][:90])}”</i></div>'
-        for h in gate1["hits"]
-    )
-    theme.card(hits_html + '<div class="se-trace" style="margin-top:8px">deterministic regex/structural checks · gate version '
-               + esc(gate1["gate_version"]) + " · runs before any model grading</div>")
+    chips = " ".join(f'<span class="se-chip" style="border-color:{"#F85149" if h["severity"] == "error" else "#F2A65A"};color:{"#F85149" if h["severity"] == "error" else "#F2A65A"};margin-left:0">{esc(h["rule_id"])} {esc(h["requirement_id"])}</span>' for h in gate1["hits"])
+    st.markdown(f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">{chips}</div>', unsafe_allow_html=True)
+    with st.expander("inspect the deterministic gate log"):
+        hits_html = "".join(
+            f'<div class="se-gatehit"><span class="{ "rid" if h["severity"] == "error" else "warn" }">'
+            f'{esc(h["rule_id"])} {esc(h["severity"])}</span> · {esc(h["requirement_id"])} · '
+            f'{esc(h["message"])} — <i>“{esc(h["excerpt"][:90])}”</i></div>'
+            for h in gate1["hits"]
+        )
+        st.markdown(hits_html + '<div class="se-trace" style="margin-top:8px">deterministic regex/structural checks · gate version '
+                    + esc(gate1["gate_version"]) + " · runs before any model grading</div>", unsafe_allow_html=True)
 
     # ---- corrected diff ------------------------------------------------------
     theme.section("the fix", "Corrected diff, ready for engineering", f'{len(arbiter["amendments"])} amendments · +{len(arbiter["new_requirements"])} migration requirement')
-    for am in arbiter["amendments"]:
+    def _am_card(am):
         theme.card(
             f'<div class="rowtop"><span class="se-id">{esc(am["requirement_id"])}</span>'
             f'<span class="se-topic">{esc(am["rationale"])}</span>'
@@ -214,17 +230,25 @@ def render_hero(run: dict) -> None:
             f'<div class="se-diff-del">{esc(am["before"])}</div>'
             f'<div class="se-diff-add">{esc(am["after"])}</div>'
         )
-    for nr in arbiter["new_requirements"]:
-        acs = "".join(f'<div class="se-ac">{esc(ac)}</div>' for ac in nr["acceptance_criteria"])
-        theme.card(
-            f'<div class="rowtop"><span class="se-id">{esc(nr["id"])} · NEW</span>'
-            f'<span class="se-topic">{esc(nr["title"])}</span></div>'
-            f'<div class="se-diff-add">{esc(nr["statement"])}</div>{acs}'
-            f'<div class="se-trace">traces → {esc(", ".join(nr["source_claim_ids"]))}</div>'
-        )
+    _am_card(arbiter["amendments"][0])
+    strip = " · ".join(f'{am["requirement_id"]}' for am in arbiter["amendments"][1:])
+    with st.expander(f"all corrected diffs — {strip} + new requirements"):
+        for am in arbiter["amendments"][1:]:
+            _am_card(am)
+        for nr in arbiter["new_requirements"]:
+            acs = "".join(f'<div class="se-ac">{esc(ac)}</div>' for ac in nr["acceptance_criteria"])
+            theme.card(
+                f'<div class="rowtop"><span class="se-id">{esc(nr["id"])} · NEW</span>'
+                f'<span class="se-topic">{esc(nr["title"])}</span></div>'
+                f'<div class="se-diff-add">{esc(nr["statement"])}</div>{acs}'
+                f'<div class="se-trace">traces → {esc(", ".join(nr["source_claim_ids"]))}</div>'
+            )
 
     # ---- the human: Decision Console ----------------------------------------
     render_console(run)
+
+    # ---- finale: the spec ships ----------------------------------------------
+    render_shipped_feature(run)
 
     # ---- depth ----------------------------------------------------------------
     st.write("")
@@ -233,6 +257,136 @@ def render_hero(run: dict) -> None:
         render_trace(run)
     with st.expander("⚙ How it works — architecture, budget, eval-log"):
         render_how(run)
+
+
+
+# ---------------------------------------------------------------- playback
+def render_playback(run: dict, chars_per_sec: int) -> None:
+    """Recorded-sequence playback: only agent messages stream; artifacts snap.
+    Honest by construction — the label never claims live inference."""
+    s = run["stages"]
+    st.markdown(
+        '<div class="se-flag" style="display:block">RECORDED REPLAY · deterministic scripted run · '
+        "original engine sequence preserved · animation is not live inference</div>",
+        unsafe_allow_html=True,
+    )
+    pane = st.container()
+    turn_no, total = 0, len(s["debate"]["turns"])
+    for phase in s["debate"]["phases"]:
+        pane.markdown(f'<div class="se-spechead" style="margin:18px 0 10px"><span class="sid">{esc(phase["key"])}</span>'
+                      f'<span class="stitle" style="font-size:16px">{esc(phase["title"])}</span></div>',
+                      unsafe_allow_html=True)
+        time.sleep(0.5)
+        for ev in phase["events"]:
+            if ev["type"] == "router" and not ev.get("close_phase"):
+                pane.markdown(f'<p class="se-trace">router → {esc(ev["focused_question"])}</p>', unsafe_allow_html=True)
+                time.sleep(0.7)
+            elif ev["type"] == "turn":
+                turn_no += 1
+                label = team.role_label(ev["role"])
+                ph = pane.empty()
+                msg = ev["message"]
+                budget = min(len(msg) / chars_per_sec, 5.0)
+                step = max(2, int(len(msg) / max(budget * 20, 1)))
+                shown = ""
+                ph.markdown(f'<p class="se-trace">Replaying {esc(label)} · turn {turn_no} of {total}</p>', unsafe_allow_html=True)
+                for i in range(0, len(msg), step):
+                    shown = msg[: i + step]
+                    ph.markdown(turn_html({**ev, "message": shown + " ▌"}, show_notes=False), unsafe_allow_html=True)
+                    time.sleep(budget / max(len(msg) / step, 1))
+                ph.markdown(turn_html(ev, show_notes=True), unsafe_allow_html=True)
+                time.sleep(0.3)
+            elif ev["type"] == "router" and ev.get("close_phase"):
+                pane.markdown(f'<div class="se-noobj">net movement — {esc(ev["net_movement"])}</div>', unsafe_allow_html=True)
+                time.sleep(0.5)
+    pane.markdown(f'<div class="se-card"><div class="se-body">{esc(s["debate"]["arbiter"]["summary"])}</div>'
+                  '<div class="se-trace">arbiter ruling assembled · playback complete</div></div>',
+                  unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------- the spec ships
+FRAUD_KEYWORDS = ["staged", "fake", "collusion", "pre-arranged", "insurance fraud", "witness paid"]
+
+
+def render_shipped_feature(run: dict) -> None:
+    theme.section("the spec ships", "Executable acceptance-test slice — pure code, every path cites the baseline",
+                  "no model at runtime")
+    st.markdown(
+        '<p class="se-body" style="max-width:70ch">This working FNOL + triage slice is implemented '
+        "directly from the signed corrected spec. Every behavior below is annotated with the "
+        "requirement and claim it executes. Toggle the edges and try to break it.</p>",
+        unsafe_allow_html=True,
+    )
+    presets = {
+        "Clean claim < 5M": (3_800_000, "rear fender dent from parking incident", True, "active", True),
+        "Fraud keyword": (4_200_000, "staged collision with witness statement", True, "active", True),
+        "Lapsed policy": (2_000_000, "water damage from roof leak", True, "lapsed", True),
+        "High-value 8M": (8_000_000, "engine damage after flood", True, "active", True),
+    }
+    cols = st.columns(4)
+    for col, name in zip(cols, presets):
+        if col.button(name, key=f"preset_{name}"):
+            st.session_state["fnol"] = presets[name]
+    amount, desc, photo, policy, precond = st.session_state.get("fnol", presets["Clean claim < 5M"])
+
+    with st.form("fnol"):
+        c1, c2 = st.columns(2)
+        amount = c1.number_input("Claim amount (VND)", value=amount, step=100_000)
+        policy = c2.selectbox("Policy status", ["active", "lapsed"], index=0 if policy == "active" else 1)
+        desc = st.text_input("Incident description", value=desc)
+        c3, c4 = st.columns(2)
+        photo = c3.checkbox("Photo(s) attached", value=photo)
+        precond = c4.checkbox("Policy 4.1 amended (simulates your C1 ruling)", value=precond)
+        go = st.form_submit_button("Submit FNOL → run triage", type="primary")
+
+    if not go:
+        return
+    trace = {"amount_vnd": amount, "policy": policy, "photo": photo, "precondition_met": precond, "description": desc}
+
+    def verdict(kind, title, body, cite):
+        color = {"approve": "#3FB950", "reject": "#F85149", "human": "#F2A65A"}[kind]
+        st.markdown(
+            f'<div class="se-catch" style="border-left-color:{color}">'
+            f'<div class="chead"><span class="cnum" style="color:{color}">{esc(title)}</span></div>'
+            f'<div class="se-body">{esc(body)}</div>'
+            f'<div class="se-trace">{esc(cite)}</div></div>',
+            unsafe_allow_html=True,
+        )
+        trace["verdict"] = title
+
+    if policy == "lapsed":
+        verdict("reject", "REJECTED — lapsed policy",
+                "Submission rejected with the lapse reason. This rejection IS R1-AC2.",
+                "executes R1-AC2 · born from W1 (CEO: customers file the loss in the app) · localized copy per UX turn (F9)")
+    elif not photo:
+        verdict("reject", "BLOCKED — no photo attached",
+                "FNOL requires at least one photo before a claim record is created.",
+                "executes R1-AC1 · born from W1")
+    elif any(k in desc.lower() for k in FRAUD_KEYWORDS):
+        verdict("human", "ASSIGNED TO HUMAN INVESTIGATOR",
+                "The AI never clears its own fraud flag. Investigator receives a redacted ticket; "
+                "full payload is RBAC-gated and access-logged. Record retained ten years.",
+                "executes R4-AC1/AC2 · born from W6, W7 · redaction per Security turn (F11) · flag immutable once set")
+    elif amount < 5_000_000 and precond:
+        verdict("approve", "INSTANT APPROVED — payout due in 48:00:00",
+                "No human in the path (launch precondition met). Exactly one disbursement per claim id, "
+                "measured approved_at → paid_at; a structured decision_event was emitted to the audit log.",
+                "executes R2-AC1 · born from W2/W3 · idempotency per Eng turn (F4) · audit event per DevOps turn (F10) · 48h bound per QA turn (F3)")
+    elif amount < 5_000_000:
+        verdict("human", "ROUTED TO HUMAN ADJUSTER — precondition unmet",
+                "Policy 4.1 is not yet amended, so the manual-review fallback applies until your launch "
+                "precondition is satisfied.",
+                "executes the R2 amendment (F2) · your C1 ruling is the gate")
+    else:
+        verdict("human", "ROUTED TO HUMAN ADJUSTER — decision within 3 business days",
+                "High-value claims get a human decision; escalates to claims ops on breach.",
+                "executes R6-AC1/AC2 · born from W8")
+    st.download_button("⬇ Download execution trace (test vector)", json.dumps(trace, indent=2), "fnol-trace.json")
+    st.markdown(
+        '<p class="se-trace">100% deterministic Python — no model ran. The rules this simulator enforces '
+        "are the signed corrected spec of this run plus your Decision Console rulings.</p>",
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------- decision console

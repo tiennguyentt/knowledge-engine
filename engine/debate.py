@@ -76,8 +76,6 @@ def run_debate(
     turns_log: list[dict] = []
 
     for phase in team.phases():
-        if phase["key"] == "synthesis":
-            continue  # synthesis is the arbiter's job below
         phase_rec = {"key": phase["key"], "title": phase["title"],
                      "eligible": phase["eligible"], "events": []}
         emit({"type": "phase_start", "phase": phase["key"], "title": phase["title"]})
