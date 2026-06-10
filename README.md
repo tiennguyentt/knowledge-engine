@@ -104,6 +104,10 @@ Configuration (optional, env vars): `LLM_BASE_URL`, `KNOWLEDGE_ENGINE_MODEL`.
   and schema are fictional; no employer or client material is included.
 - **Your API key is never stored.** Live mode uses it for that session's
   calls only; the app keeps no server-side copy.
+- **Bring your own evidence pack.** Live mode accepts your own transcripts,
+  docs, code and schema plus a draft-spec.json (template downloadable in the
+  sidebar). Uploaded files are processed in-session only — never stored
+  server-side, never committed.
 - **The simulator runs no model.** Compiled behavior, acceptance vectors,
   the gate, drift checks and the Time Machine are pure code.
 - **Honest labels everywhere.** Recorded replays are labeled recorded;

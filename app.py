@@ -49,8 +49,19 @@ with st.sidebar:
         base_url = st.text_input("API base URL", value=DEFAULT_BASE_URL)
         api_key = st.text_input("API key", type="password", help="Never stored. OpenRouter keys start with sk-or-.")
         model = st.selectbox("Model", SUGGESTED_MODELS, accept_new_options=True)
+        byo_files = st.file_uploader(
+            "Your evidence pack (optional)", accept_multiple_files=True,
+            type=["md", "txt", "sql", "py", "json"],
+            help="Transcripts/docs (.md .txt), code (.py .txt), schema (.sql) + one draft-spec.json "
+                 "(the spec to red-team). Leave empty to run the AnDigi pack.",
+        )
+        st.download_button("⬇ draft-spec.json template",
+                           (DATA_DIR / "andigi" / "draft-spec.json").read_text(encoding="utf-8"),
+                           "draft-spec.json", use_container_width=True)
         run_live = st.button("▶ Run the red team", type="primary", disabled=not api_key, use_container_width=True)
-        st.caption("Hard budget 150k tokens, live burn shown. Cheap models work: every call is schema-validated with retries.")
+        st.caption("Hard budget 150k tokens, live burn shown. Cheap models work: every call is "
+                   "schema-validated with retries. Uploaded files stay in this session only — "
+                   "never stored server-side, never committed.")
 
     st.divider()
     st.header("About")
@@ -247,9 +258,9 @@ def render_hero(run: dict) -> None:
 
 
 
-    # ---- eval: detection recall ---------------------------------------------
+    # ---- eval: detection recall (AnDigi ground truth only) -------------------
     try:
-        ev = evals.score_run(run)
+        ev = None if run["meta"].get("evidence_pack") == "byo" else evals.score_run(run)
     except Exception:
         ev = None
     if ev:
@@ -502,7 +513,9 @@ def render_chat(run: dict) -> None:
                     f'{len(s["debate"]["turns"])} turns · {len(s["debate"]["arbiter"]["amendments"])} amendments</p>',
                     unsafe_allow_html=True)
         st.download_button("⬇ eval-log", json.dumps(run, indent=2, ensure_ascii=False), "run.json", use_container_width=True)
-        if st.button("🔁 Check evidence drift", use_container_width=True):
+        if run["meta"].get("evidence_pack") == "byo":
+            st.caption("drift watch is off for uploaded packs — files live in this session only")
+        elif st.button("🔁 Check evidence drift", use_container_width=True):
             feed = st.session_state.setdefault("chat_feed", [])
             for d in drift.check(run):
                 feed.append({"kind": "system", "text": d["text"]})
@@ -976,6 +989,30 @@ def render_how(run: dict) -> None:
 
 # ---------------------------------------------------------------- live mode
 def render_live() -> None:
+    evidence_dir = DATA_DIR / "andigi"
+    byo = bool(byo_files)
+    if byo:
+        names = [f.name for f in byo_files]
+        if "draft-spec.json" not in names:
+            st.error("Your pack needs a draft-spec.json (the spec to red-team). "
+                     "Download the template in the sidebar, adapt it, and re-upload.")
+            st.stop()
+        if len(names) < 2:
+            st.error("Upload at least one evidence file (transcript, doc, code or schema) "
+                     "besides draft-spec.json — the red team needs evidence to check against.")
+            st.stop()
+        import tempfile
+        evidence_dir = Path(tempfile.mkdtemp(prefix="ke-byo-"))
+        for f in byo_files:
+            (evidence_dir / Path(f.name).name).write_bytes(f.getvalue())
+        try:
+            DraftSpec.model_validate_json((evidence_dir / "draft-spec.json").read_text(encoding="utf-8"))
+        except Exception as err:
+            st.error(f"draft-spec.json does not match the schema: {err}")
+            st.stop()
+        st.info(f"BYO evidence pack: {len(names) - 1} evidence files + draft spec · "
+                "processed in this session only")
+
     llm = LLM(api_key=api_key, model=model, base_url=base_url)
     status_area = st.container()
     stream_area = st.container()
@@ -1010,16 +1047,19 @@ def render_live() -> None:
             typing["ph"].markdown(typing["buf"] + "▌")
 
     try:
-        run = run_pipeline(llm, on_progress, on_event, on_text)
+        run = run_pipeline(llm, on_progress, on_event, on_text, evidence_dir=evidence_dir)
     except Exception as err:  # surface provider errors readably
         st.error(f"Run failed: {err}")
         st.stop()
 
+    if byo:
+        run["meta"]["evidence_pack"] = "byo"
     import time as _time
     name = f"live-{_time.strftime('%Y%m%d-%H%M%S')}"
     save_run(run, name)
     # hand the full-roster conversation to the Chat workspace
-    feed = [{"kind": "system", "text": f"LIVE MODEL RUN · {run['meta']['model']} · real tokens · full roster"}]
+    feed = [{"kind": "system", "text": f"LIVE MODEL RUN · {run['meta']['model']} · real tokens · full roster"
+                                       + (" · your evidence pack" if byo else "")}]
     for phase in run["stages"]["debate"]["phases"]:
         feed.append({"kind": "system", "text": phase["title"]})
         for ev in phase["events"]:
