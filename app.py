@@ -118,10 +118,19 @@ def render_hero(run: dict) -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<p class="se-hero-sub">Audited against what stakeholders said, the published policy, '
-        "the code and the database. Agents do the work; a human signs off.</p>",
+        '<p class="se-hero-sub"><b style="color:#E7EAF0">What you are looking at:</b> an AI product team '
+        "— 11 role agents plus a deterministic code gate — that red-teams a draft spec against every "
+        "piece of evidence: meeting transcripts, published policy, production code, the database.<br>"
+        '<b style="color:#E7EAF0">The case:</b> AnDigi, a digital insurance app — its claims-filing '
+        "+ AI-triage feature. Below: what the team caught, the corrected diff, and the decisions "
+        "only a human can make.</p>",
         unsafe_allow_html=True,
     )
+    pipe = " ".join(
+        f'<span class="se-id">{p}</span>' + ('<span style="color:#2A3140"> → </span>' if i < 6 else "")
+        for i, p in enumerate(["evidence", "code gate", "grading", "11-role debate", "corrected diff", "human sign-off", "working feature"])
+    )
+    st.markdown(f'<div style="font-family:JetBrains Mono,monospace;font-size:11.5px;margin:2px 0 10px;line-height:2">{pipe}</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="se-stats">'
         + stat(f'<span class="from">{g1["overall_score"]} →</span> {g2["overall_score"]} <span class="delta">+{g2["overall_score"] - g1["overall_score"]}</span>', "spec readiness")
