@@ -18,7 +18,7 @@ import streamlit as st
 
 import intro
 import theme
-from engine import compiler, drift, evals, handoff, ledger, sponsored, team, timemachine
+from engine import compiler, drift, evals, handoff, ledger, sponsored, standards, team, timemachine
 from engine.llm import DEFAULT_BASE_URL, SUGGESTED_MODELS, LLM
 from engine.pipeline import DATA_DIR, list_runs, load_run, run_pipeline, save_run
 from engine.schemas import DraftSpec
@@ -280,6 +280,37 @@ def render_hero(run: dict) -> None:
         render_trace(run)
     with st.expander("⚙ How it works — architecture, budget, eval-log"):
         render_how(run)
+    with st.expander("📐 Standards alignment — INCOSE characteristics & EARS patterns"):
+        st.markdown(
+            '<p class="se-body">What the gate and rubric enforce, read in the vocabulary an '
+            "enterprise reviewer audits against. The mapping is ours, at the characteristic "
+            "level — a reading aid, not a certification.</p>",
+            unsafe_allow_html=True,
+        )
+        gate_rows = "".join(
+            f'<div class="se-gatehit"><span class="rid">{esc(gid)}</span> → <b>{esc(char)}</b> · {esc(why)}</div>'
+            for gid, (char, why) in standards.GATE_TO_INCOSE.items()
+        )
+        dim_rows = "".join(
+            f'<div class="se-gatehit"><span class="rid">{esc(did)}</span> → <b>{esc(char)}</b> · {esc(why)}</div>'
+            for did, (char, why) in standards.DIMENSION_TO_INCOSE.items()
+        )
+        st.markdown('<div class="se-vs">CODE GATE → INCOSE QUALITY CHARACTERISTICS</div>' + gate_rows
+                    + '<div class="se-vs" style="margin-top:14px">D1–D5 RUBRIC → INCOSE QUALITY CHARACTERISTICS</div>' + dim_rows,
+                    unsafe_allow_html=True)
+        al = standards.alignment_report(run)
+        req_rows = "".join(
+            f'<div class="se-gatehit"><span class="rid">{esc(r["id"])}</span> {esc(r["title"])} · '
+            f'EARS: <b>{esc(r["ears"])}</b> · ACs {r["acs_gwt"]}/{r["acs_total"]} Given-When-Then</div>'
+            for r in al["requirements"]
+        )
+        st.markdown(
+            f'<div class="se-vs" style="margin-top:14px">CORRECTED SPEC → EARS SHAPE (heuristic) · '
+            f'{al["acs_gwt"]}/{al["acs_total"]} ACS IN GIVEN-WHEN-THEN</div>' + req_rows
+            + '<div class="se-trace" style="margin-top:8px">statements are declarative rules (EARS Ubiquitous); '
+            "triggers and conditions live in the Given/When clauses of each AC · engine/standards.py · pure code</div>",
+            unsafe_allow_html=True,
+        )
 
 
 
