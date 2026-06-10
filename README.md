@@ -31,17 +31,26 @@ operate in my day-to-day product work.
 | 05 | **The spec says one thing, the code does another.** The gap between intended and actual systems is where incidents live. | Evidence comes from every source — transcripts, documents, code, schemas. Spoken decisions argue by authority; code and data are artifact-state facts no one can out-talk. Gaps become explicit migration requirements. |
 | 06 | **Corrections die in chat threads.** The same mistake gets fixed for the tenth time. | Every human edit at sign-off distills into a persistent rule applied on the next run — corrections become institutional memory. |
 
-## Workflow 01 — spec
+## The loop
 
 ```
-evidence ────▶ 1 source-traced wiki     every claim: verbatim quote + locator + claim class
-             ▶ 2 conflict check         truth hierarchy; code/DB are artifact-state facts
-             ▶ 3 deterministic gate     pure code — models cannot override it
-             ▶ 4 D1–D5 grading          adversarial; typed findings P0/P1/P2
-             ▶ 5 phase-gated debate     bounded router summons the right specialists
-             ▶ 6 corrected diff         amendments + migration requirements, re-graded
-             ▶ 7 human sign-off         deliberately NOT automated
+evidence ────▶ source-traced wiki      every claim: verbatim quote + locator + claim class
+             ▶ conflict check          truth hierarchy; code/DB are artifact-state facts
+             ▶ deterministic gate      pure code — models cannot override it
+             ▶ D1–D5 grading           adversarial; typed findings P0/P1/P2
+             ▶ phase-gated debate      bounded router; full 11-role roster, streamed as CHAT
+             ▶ corrected diff          amendments + migration requirements, re-graded
+             ▶ Decision Console        your rulings rewrite the baseline; edits re-run the gate
+             ▶ Judgment Ledger         rulings distill into scoped, versioned, revocable rules
+             ▶ compiled behavior       the signed baseline compiles to a decision table +
+                                       acceptance vectors — flip a ruling, behavior + tests flip
+             ▶ drift watch             changed evidence surfaces in chat, naming moved claims
 ```
+
+**Four workspaces behind one run bar:** 💬 Chat (the debate as a streaming
+conversation — your message is the 12th seat, top authority), 📋 Report
+(catches with receipts), 🧪 Test (the compiled FNOL slice + acceptance board
++ Executable Time Machine), ✍ Decide (rulings → baseline → rules).
 
 The default view needs no API key (it replays a recorded run through the real
 engine). Live mode runs the whole red team on any OpenAI-compatible endpoint
@@ -89,6 +98,7 @@ Configuration (optional, env vars): `LLM_BASE_URL`, `KNOWLEDGE_ENGINE_MODEL`.
 
 | # | Milestone | Status |
 |---|-----------|--------|
-| M1 | Enterprise evidence case (insurance domain), full delivery-team roster (PO, BA, Architect, Eng, QA, DevOps/SRE, Security, Compliance, UX, Scrum Master, Arbiter) phase-gated, deterministic code gate with inline hits, D1–D5 grading with re-grade delta, live-typing work notes, learned-rule vault | next |
-| M2 | Public product: FastAPI + Next.js + SSE, shareable run URLs, branded exports (spec PDF/MD + handoff package), cost preflight | committed |
-| M3 | Workflow 02: spec → sprint plan | planned |
+| M1 | AnDigi case, 11-role debate, code gate, D1–D5, chat terminal, Decision Console, Judgment Ledger (rules fire across runs), Executable Baseline Compiler (rulings → running behavior + tests), drift watch, handoff exports, Time Machine | **shipped** |
+| M1.5 | First fully model-generated run (BYO/sponsored key), capped sponsored live mode | plumbing ready, awaiting key |
+| M2 | Public product: FastAPI + Next.js + SSE broadcast, shareable run URLs, branded PDF exports | committed |
+| M3 | Workflow 02: spec → sprint plan · outcome re-ingestion (decision_events → evidence) | planned |
