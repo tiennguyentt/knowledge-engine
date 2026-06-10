@@ -18,7 +18,7 @@ import streamlit as st
 
 import intro
 import theme
-from engine import compiler, handoff, ledger, sponsored, team, timemachine
+from engine import compiler, drift, handoff, ledger, sponsored, team, timemachine
 from engine.llm import DEFAULT_BASE_URL, SUGGESTED_MODELS, LLM
 from engine.pipeline import DATA_DIR, list_runs, load_run, run_pipeline, save_run
 from engine.schemas import DraftSpec
@@ -443,6 +443,12 @@ def render_chat(run: dict) -> None:
                     f'{len(s["debate"]["turns"])} turns · {len(s["debate"]["arbiter"]["amendments"])} amendments</p>',
                     unsafe_allow_html=True)
         st.download_button("⬇ eval-log", json.dumps(run, indent=2, ensure_ascii=False), "run.json", use_container_width=True)
+        if st.button("🔁 Check evidence drift", use_container_width=True):
+            feed = st.session_state.setdefault("chat_feed", [])
+            for d in drift.check(run):
+                feed.append({"kind": "system", "text": d["text"]})
+                run["events"].append({"seq": len(run["events"]) + 1, "type": "drift_check", **d})
+            st.rerun()
         if sponsored.available():
             st.markdown(f'<p class="se-trace">sponsored live: {sponsored.remaining_runs()} runs left today</p>', unsafe_allow_html=True)
 
