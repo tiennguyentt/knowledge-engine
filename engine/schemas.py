@@ -149,3 +149,34 @@ class AdvisorItem(BaseModel):
 class AdvisorReport(BaseModel):
     items: list[AdvisorItem]
     verdict: str = Field(description="'NO_CONCERNS' | 'MINOR_POLISH' | 'REFRAME_RECOMMENDED'")
+
+
+# ---- Human sign-off (Decision Console; no LLM involved) ----------------------
+
+class DecisionRuling(BaseModel):
+    decision_index: int
+    decision_text: str
+    choice: str = Field(description="The option the human selected")
+    rationale: str = Field(description="One-line reason, recorded permanently")
+
+
+class AmendmentReview(BaseModel):
+    amendment_index: int
+    action: str = Field(description="'accept' | 'edit' | 'reject' | 'defer'")
+    edited_after: str = Field(default="", description="Replacement text when action='edit'")
+    rationale: str = Field(default="")
+
+
+class LearnedRule(BaseModel):
+    id: str
+    title: str
+    rule_text: str
+    scope: str = Field(default="this project")
+    severity: str = Field(description="'blocking' | 'advisory'")
+    enforce_via: str = Field(description="'gate' | 'grader' | 'debate' | 'preflight'")
+    applies_when: dict = Field(description="v0 matcher: {'target': 'draft'|'conflict'|'finding', ...}")
+    born_run: str = ""
+    born_item: str = ""
+    born_by: str = ""
+    born_date: str = ""
+    status: str = Field(default="active", description="'active' | 'revoked'")

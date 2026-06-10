@@ -11,14 +11,17 @@ Live mode runs the real pipeline through any OpenAI-compatible endpoint
 """
 
 import json
+import time
+from pathlib import Path
 
 import streamlit as st
 
 import intro
 import theme
-from engine import team
+from engine import handoff, ledger, team, timemachine
 from engine.llm import DEFAULT_BASE_URL, SUGGESTED_MODELS, LLM
-from engine.pipeline import list_runs, load_run, run_pipeline, save_run
+from engine.pipeline import DATA_DIR, list_runs, load_run, run_pipeline, save_run
+from engine.schemas import DraftSpec
 
 st.set_page_config(page_title="Knowledge Engine", page_icon="📐", layout="wide")
 theme.inject()
@@ -220,13 +223,8 @@ def render_hero(run: dict) -> None:
             f'<div class="se-trace">traces → {esc(", ".join(nr["source_claim_ids"]))}</div>'
         )
 
-    # ---- the human ----------------------------------------------------------
-    theme.section("the human", "Deliberately not automated", f'{len(arbiter["unresolved_human_decisions"])} open decisions')
-    for d in arbiter["unresolved_human_decisions"]:
-        st.markdown(f'<div class="se-flag" style="display:block;margin-top:8px">⚑ {esc(d)}</div>', unsafe_allow_html=True)
-    st.write("")
-    if st.button("✍ Sign off this spec", type="primary"):
-        st.success("Signed off. Agents do the work. Humans stay accountable.")
+    # ---- the human: Decision Console ----------------------------------------
+    render_console(run)
 
     # ---- depth ----------------------------------------------------------------
     st.write("")
@@ -235,6 +233,176 @@ def render_hero(run: dict) -> None:
         render_trace(run)
     with st.expander("⚙ How it works — architecture, budget, eval-log"):
         render_how(run)
+
+
+# ---------------------------------------------------------------- decision console
+def _decision_options(text: str) -> list[str]:
+    low = text.lower()
+    if "policy" in low:
+        return [
+            "Approve with explicit launch precondition — policy must be amended first (recommended)",
+            "Reverse: the published policy wins; disable the automated behavior in v1",
+            "Defer — assign an owner and a due date; blocks unconditional shipment",
+        ]
+    if "counsel" in low or "e-kyc" in low or "confirm" in low:
+        return [
+            "Confirm the evidence-backed position (recommended)",
+            "Require a legal citation — block the requirement until provided",
+            "Defer to counsel with owner and date",
+        ]
+    return ["Approve as resolved (recommended)", "Reverse the resolution", "Defer with owner and date"]
+
+
+def render_console(run: dict) -> None:
+    arbiter = run["stages"]["debate"]["arbiter"]
+    decisions = arbiter["unresolved_human_decisions"]
+    amendments = arbiter["amendments"]
+    state = st.session_state.get("signoff_state", "pending")
+
+    if state == "signed":
+        render_baseline(run, st.session_state["signoff"])
+        return
+
+    theme.section("the human", "Decision Console — your authority, recorded",
+                  f"{len(decisions)} rulings + {len(amendments)} reviews · ≈60 seconds")
+    st.markdown(
+        '<p class="se-body" style="max-width:70ch">Rulings have consequences, not comments: '
+        "your choices rewrite the baseline, your edits re-run the code gate, and your "
+        "non-trivial judgments are distilled — with your approval — into permanent rules "
+        "the system enforces on every future run.</p>",
+        unsafe_allow_html=True,
+    )
+
+    if state == "pending":
+        with st.form("console"):
+            rulings: list[dict] = []
+            for i, d in enumerate(decisions):
+                st.markdown(f'<div class="se-flag" style="display:block">⚑ {esc(d)}</div>', unsafe_allow_html=True)
+                choice = st.radio("Your ruling", _decision_options(d), key=f"rule_{i}", label_visibility="collapsed")
+                rationale = st.text_input("One-line rationale (permanent record)", key=f"rat_{i}",
+                                          placeholder="e.g. CEO confirmed in standup; Legal ticket L-42 opened")
+                rulings.append({"decision_index": i, "decision_text": d, "choice": choice, "rationale": rationale})
+                st.write("")
+            st.markdown('<p class="se-trace">amendment reviews — Accept enters the baseline; Edit re-runs the gate; Reject requires a reason</p>', unsafe_allow_html=True)
+            reviews: list[dict] = []
+            for i, am in enumerate(amendments):
+                cols = st.columns([3, 2])
+                cols[0].markdown(f'<span class="se-id">{esc(am["requirement_id"])}</span> · {esc(am["rationale"][:70])}', unsafe_allow_html=True)
+                action = cols[1].selectbox("action", ["accept", "edit", "reject", "defer"], key=f"act_{i}", label_visibility="collapsed")
+                reviews.append({"amendment_index": i, "action": action, "edited_after": "", "rationale": ""})
+            submitted = st.form_submit_button("Review rulings → propose rules", type="primary")
+        if submitted:
+            st.session_state["signoff_draft"] = {"rulings": rulings, "reviews": reviews}
+            st.session_state["signoff_state"] = "rules"
+            st.rerun()
+
+    elif state == "rules":
+        draft = st.session_state["signoff_draft"]
+        needs_text = [r for r in draft["reviews"] if r["action"] in ("edit", "reject")]
+        if needs_text:
+            st.markdown('<p class="se-trace">your edits / rejection reasons</p>', unsafe_allow_html=True)
+            for r in needs_text:
+                am = amendments[r["amendment_index"]]
+                if r["action"] == "edit":
+                    r["edited_after"] = st.text_area(f'{am["requirement_id"]} — your text', value=am["after"], key=f"edit_{r["amendment_index"]}")
+                r["rationale"] = st.text_input(f'{am["requirement_id"]} — why ({r["action"]})', key=f"why_{r["amendment_index"]}")
+
+        proposed = ledger.propose_rules(run, draft["rulings"], draft["reviews"])
+        st.markdown('<p class="se-trace">rules distilled from YOUR judgment — approve, or decline learning. Rules are scoped, versioned, revocable.</p>', unsafe_allow_html=True)
+        approvals = []
+        for rule in proposed:
+            theme.card(
+                f'<div class="rowtop"><span class="se-id">{esc(rule.id)}</span>'
+                f'<span class="se-topic">{esc(rule.title)}</span>'
+                f'<span class="se-chip" style="border-color:{"#F85149" if rule.severity == "blocking" else "#9AA3B2"}">{esc(rule.severity)}</span></div>'
+                f'<div class="se-body">{esc(rule.rule_text)}</div>'
+                f'<div class="se-trace">born from: {esc(rule.born_item)} · by you · {esc(rule.born_date)}</div>'
+            )
+            approvals.append(st.checkbox(f"Approve {rule.id}", value=True, key=f"appr_{rule.id}"))
+        if st.button("✍ Approve baseline & create handoff", type="primary"):
+            approved = [r for r, ok in zip(proposed, approvals) if ok]
+            ledger.commit_rules(approved)
+            signoff = {
+                "status": "complete", "baseline_id": handoff.baseline_id(),
+                "signed_at": time.strftime("%Y-%m-%d %H:%M"), "by": "you",
+                "rulings": draft["rulings"], "reviews": draft["reviews"],
+                "rules_approved": [r.id for r in approved],
+            }
+            run["signoff"] = signoff
+            seq = len(run["events"])
+            for i, r in enumerate(draft["rulings"]):
+                run["events"].append({"seq": seq + i + 1, "type": "decision_ruled", "choice": r["choice"]})
+            run["events"].append({"seq": len(run["events"]) + 1, "type": "signoff_completed",
+                                   "baseline": signoff["baseline_id"], "rules": signoff["rules_approved"]})
+            run["lifecycle"].append({"state": "shipped", "note": signoff["baseline_id"]})
+            save_run(run, f"signed-{time.strftime('%Y%m%d-%H%M%S')}")
+            st.session_state["signoff"] = signoff
+            st.session_state["signoff_state"] = "signed"
+            st.rerun()
+        if st.button("← Back to rulings"):
+            st.session_state["signoff_state"] = "pending"
+            st.rerun()
+
+
+def render_baseline(run: dict, signoff: dict) -> None:
+    spec = run["stages"]["corrected_spec"]
+    theme.section("release baseline", f"{spec['feature_name']} — governed & ready", signoff["baseline_id"])
+    st.markdown(
+        '<div class="se-stats">'
+        + stat(str(len(spec["requirements"])), "requirements")
+        + stat(str(len(signoff["rulings"])), "human rulings")
+        + stat(str(len(signoff["rules_approved"])), "rules distilled")
+        + stat(esc(signoff["signed_at"]), "signed")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+    for r in signoff["rulings"]:
+        theme.card(
+            f'<div class="rowtop"><span class="se-id">RULING</span>'
+            f'<span class="se-topic">{esc(r["choice"])}</span></div>'
+            f'<div class="se-trace">{esc(r["decision_text"][:160])} · rationale: {esc(r["rationale"] or "—")} · recorded by you, {esc(signoff["signed_at"])}</div>'
+        )
+
+    c1, c2, c3 = st.columns(3)
+    c1.download_button("⬇ Signed spec (MD)", handoff.signed_spec_md(run, signoff), "signed-spec.md")
+    c2.download_button("⬇ Decision record", handoff.decision_record_md(run, signoff), "decision-record.md")
+    c3.download_button("⬇ Jira/Linear stubs", handoff.ticket_stubs_md(run, signoff), "ticket-stubs.md")
+
+    # ---- the compounding proof: rules fire on the NEXT draft -----------------
+    theme.section("the loop", "Your judgment, applied to the next draft", "preflight · pure code")
+    if st.button("⚡ Preflight the next AnDigi draft (v1.1) with your rules"):
+        v2 = DraftSpec.model_validate_json((DATA_DIR / "andigi-v2" / "draft-spec.json").read_text(encoding="utf-8"))
+        hits = ledger.preflight(v2)
+        if not hits:
+            st.info("No ledger rules matched this draft.")
+        for h in hits:
+            rule = h["rule"]
+            st.markdown(
+                f'<div class="se-catch"><div class="chead"><span class="cnum">{esc(rule["id"])}</span>'
+                f'<span class="ctitle">{esc(rule["title"])} — fired on {esc(h["requirement_id"])}</span></div>'
+                f'<div class="se-body">{esc(rule["rule_text"])}</div>'
+                f'<div class="se-trace">matched: {esc(", ".join(h["matched_keywords"]))} · effect: {esc(h["effect"])} · '
+                f'born from {esc(rule["born_item"])}, by {esc(rule["born_by"])}, {esc(rule["born_date"])} — '
+                "your past self just reviewed this draft before any model ran.</div></div>",
+                unsafe_allow_html=True,
+            )
+
+    with st.expander("⏳ Decision Time Machine — what if you ruled differently on C1?"):
+        branch = timemachine.alternative_branch(run, "C1")
+        if branch:
+            st.markdown(f'<p class="se-body"><b>What if:</b> {esc(branch["what_if"])}</p>', unsafe_allow_html=True)
+            for ch in branch["requirements_rewritten"]:
+                theme.card(
+                    f'<div class="rowtop"><span class="se-id">{esc(ch["requirement_id"])}</span>'
+                    f'<span class="se-topic">rewrites in this branch</span></div>'
+                    f'<div class="se-diff-del">{esc(ch["original_after"])}</div>'
+                    f'<div class="se-diff-add">{esc(ch["counterfactual_after"])}</div>'
+                )
+            if branch["launch_conditions_removed"]:
+                st.markdown('<p class="se-trace">launch conditions removed in this branch:</p>', unsafe_allow_html=True)
+                for d in branch["launch_conditions_removed"]:
+                    st.markdown(f'<div class="se-noobj">{esc(d[:160])}</div>', unsafe_allow_html=True)
+            st.markdown(f'<p class="se-trace">rules never born: {esc(", ".join(branch["rules_never_born"]))} · {esc(branch["note"])}</p>', unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- trace depth

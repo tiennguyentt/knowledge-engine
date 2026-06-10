@@ -1,0 +1,28 @@
+{
+  "feature_name": "AnDigi v1.1 — Motorbike claims fast-track (next draft)",
+  "summary": "Extends AI triage: motorbike physical-damage claims get a higher fast-track ceiling and a streamlined evidence flow.",
+  "out_of_scope": [
+    "Bodily-injury claims",
+    "Policy issuance changes"
+  ],
+  "requirements": [
+    {
+      "id": "V2-R1",
+      "title": "Raised fast-track ceiling",
+      "statement": "Motorbike physical-damage claims up to 20,000,000 VND that pass AI triage are auto-approved instantly without human review.",
+      "acceptance_criteria": [
+        "Given a motorbike claim of 20,000,000 VND or less with a passing triage score, when triage completes, then the claim is approved with no human in the path."
+      ],
+      "source_claim_ids": []
+    },
+    {
+      "id": "V2-R2",
+      "title": "Streamlined evidence",
+      "statement": "Per regulation on simplified motor claims, customers submit only two photos and the system must re-verify e-KYC for claims above 10,000,000 VND.",
+      "acceptance_criteria": [
+        "Given a claim above 10,000,000 VND, when FNOL is submitted, then e-KYC re-verification is triggered before triage."
+      ],
+      "source_claim_ids": []
+    }
+  ]
+}
