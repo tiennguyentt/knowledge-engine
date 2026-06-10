@@ -2,14 +2,20 @@
 
 **Not AI-assisted. Agent-operated.**
 
-An agent-operated **knowledge intelligence system**: raw, contradictory
-evidence in — a graded, source-backed, debate-hardened spec out, **ready for
-a dev team to build from without follow-up questions**. Role agents do the
-work and argue with each other; a human reads the diff and signs off.
+An **evidence-backed spec red team** for regulated product work: it audits a
+plausible-looking draft spec against transcripts, policy documents, production
+code and the database; exposes the defects that cause rework or regulatory
+exposure — with verbatim receipts; and returns a **dev-ready corrected diff**
+for human approval.
 
-The output is not documentation. It is buildable work: requirements with
-testable acceptance criteria, every assertion traced to evidence, contradictions
-resolved or escalated — graded for dev-readiness before any engineer sees it.
+Open the app and you land on the catch: the defects the agent team found in an
+approved-looking insurance spec, the corrected diff, the readiness delta
+(61 → 92), and the one decision only a human can make. The full machinery —
+deterministic code gate, D1–D5 adversarial grading, an 11-role enterprise team
+debating through a bounded router, the append-only eval-log — is inspectable
+depth behind one click.
+
+The output is not documentation. It is buildable work.
 
 This is a public, fully synthetic rebuild of the PM intelligence system I
 operate in my day-to-day product work.
@@ -28,17 +34,18 @@ operate in my day-to-day product work.
 ## Workflow 01 — spec
 
 ```
-evidence ────▶ 1 source-traced wiki      every claim carries a verbatim quote
-             ▶ 2 conflict check          truth hierarchy resolves contradictions, never hides them
-             ▶ 3 spec draft              requirements trace to claim ids
-             ▶ 4 automated grading       adversarial grader: clarity / sources / testability
-             ▶ 5 role debate             Eng Lead × QA × PO argue autonomously; arbiter rules
-             ▶ 6 human sign-off          deliberately NOT automated
+evidence ────▶ 1 source-traced wiki     every claim: verbatim quote + locator + claim class
+             ▶ 2 conflict check         truth hierarchy; code/DB are artifact-state facts
+             ▶ 3 deterministic gate     pure code — models cannot override it
+             ▶ 4 D1–D5 grading          adversarial; typed findings P0/P1/P2
+             ▶ 5 phase-gated debate     bounded router summons the right specialists
+             ▶ 6 corrected diff         amendments + migration requirements, re-graded
+             ▶ 7 human sign-off         deliberately NOT automated
 ```
 
-Open the app and you land in the **agent debate** — role agents challenging,
-defending, and conceding turn by turn, with a neutral arbiter ruling
-accept / amend / reject per requirement.
+The default view needs no API key (it replays a recorded run through the real
+engine). Live mode runs the whole red team on any OpenAI-compatible endpoint
+with your own key, streaming real tokens — agents type as they work.
 
 > All data here is synthetic. No employer or client material is included.
 

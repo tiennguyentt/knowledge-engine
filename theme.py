@@ -122,6 +122,62 @@ h1, h2, h3, [data-testid="stMetricValue"] {
   padding: 6px 10px; margin-top: 10px; display: inline-block;
 }
 
+/* ---- hero / red-team ------------------------------------------------- */
+.se-hero-head {
+  font-family: 'IBM Plex Sans', sans-serif; font-weight: 700; font-size: 30px;
+  letter-spacing: -0.015em; color: #E7EAF0; line-height: 1.25; margin: 4px 0 6px;
+}
+.se-hero-sub { color: #9AA4B2; font-size: 15.5px; max-width: 780px; line-height: 1.6; }
+.se-stats { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 4px; }
+.se-stat {
+  border: 1px solid #1E2430; background: #0E1219; border-radius: 8px;
+  padding: 10px 16px; min-width: 130px;
+}
+.se-stat .v { font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 20px; color: #E7EAF0; }
+.se-stat .v .from { color: #6B7585; font-size: 15px; }
+.se-stat .v .delta { color: #3FB950; }
+.se-stat .l { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #9AA4B2; margin-top: 2px; }
+.se-catch {
+  border: 1px solid #1E2430; border-left: 3px solid #F85149; background: #0E1219;
+  border-radius: 0 10px 10px 10px; padding: 16px 18px; margin: 0 0 12px;
+}
+.se-catch .chead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.se-catch .cnum { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #F85149; font-weight: 600; }
+.se-catch .ctitle { font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 15.5px; color: #E7EAF0; }
+.se-vs { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #6B7585; margin: 8px 0 2px; letter-spacing: .08em; }
+.se-diff-del {
+  font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #FCA5A5;
+  background: rgba(248,81,73,.08); border-left: 2px solid #F85149;
+  padding: 6px 10px; margin-top: 6px; white-space: pre-wrap;
+}
+.se-diff-del::before { content: '- '; color: #F85149; font-weight: 600; }
+.se-diff-add {
+  font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #86EFAC;
+  background: rgba(63,185,80,.08); border-left: 2px solid #3FB950;
+  padding: 6px 10px; margin-top: 2px; white-space: pre-wrap;
+}
+.se-diff-add::before { content: '+ '; color: #3FB950; font-weight: 600; }
+.se-summon {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #F85149;
+  border: 1px solid rgba(248,81,73,.4); border-radius: 999px;
+  padding: 2px 10px; display: inline-block; margin-top: 8px;
+}
+.se-gatehit { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #C7CEDA; margin-top: 5px; }
+.se-gatehit .rid { color: #F85149; font-weight: 600; }
+.se-gatehit .warn { color: #F2A65A; font-weight: 600; }
+.se-stepper { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 8px 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .06em; }
+.se-step { border: 1px solid #2A3242; border-radius: 999px; padding: 3px 12px; color: #6B7585; }
+.se-step.done { color: #3FB950; border-color: rgba(63,185,80,.4); }
+.se-step.active { color: #7C8CFF; border-color: #7C8CFF; }
+.se-step-arrow { color: #2A3242; }
+.se-notes {
+  border-top: 1px dashed #2A3242; margin-top: 10px; padding-top: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #8A94A6; line-height: 1.6;
+}
+.se-notes b { color: #9AA4B2; font-weight: 600; }
+.se-noobj { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #6B7585; margin: 2px 0; }
+.se-noobj::before { content: '○ '; color: #3FB950; }
+
 /* ---- debate bubbles -------------------------------------------------- */
 .se-turn {
   border: 1px solid #1E2430; border-left-width: 3px; background: #0E1219;
@@ -173,8 +229,8 @@ def card(inner_html: str) -> None:
     st.markdown(f'<div class="se-card">{inner_html}</div>', unsafe_allow_html=True)
 
 
-def bubble(role_key: str, role_label: str, stance: str, message: str, refs: list[str], rnd: int) -> str:
-    color = ROLE_COLORS.get(role_key, PALETTE["dim"])
+def bubble(role_key: str, role_label: str, stance: str, message: str, refs: list[str], rnd, color: str | None = None) -> str:
+    color = color or ROLE_COLORS.get(role_key, PALETTE["dim"])
     refs_html = f' · {esc(", ".join(refs))}' if refs else ""
     return (
         f'<div class="se-turn" style="border-left-color:{color}">'

@@ -1,0 +1,11 @@
+# services/claims/sla.py — current production code (excerpt)
+
+# Payout service-level targets. NOTE: business asked for faster payout at
+# some point; nobody has changed this since launch.
+PAYOUT_SLA_HOURS = 120  # 5 days from approval to disbursement
+
+ADJUSTER_DECISION_SLA_DAYS = 3
+
+def payout_deadline(approved_at):
+    """Deadline by which an approved claim must be disbursed."""
+    return approved_at + timedelta(hours=PAYOUT_SLA_HOURS)

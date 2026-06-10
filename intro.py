@@ -57,9 +57,10 @@ PIPELINE = [
     ("Evidence", "transcripts · docs · code · DB"),
     ("Wiki", "source-traced claims"),
     ("Conflicts", "truth hierarchy"),
-    ("Spec", "traceable requirements"),
+    ("Gate", "code-enforced, un-gameable"),
     ("Grade", "D1–D5 · P0/P1/P2"),
-    ("Debate", "role agents argue"),
+    ("Debate", "bounded router · full roster"),
+    ("Diff", "corrected, dev-ready"),
     ("Sign-off", "human authority"),
 ]
 
@@ -113,18 +114,13 @@ def render() -> None:
     )
 
     st.write("")
-    c1, c2, _ = st.columns([2, 2, 3])
-    if c1.button("▶ Watch a recorded run", type="primary", use_container_width=True):
+    c1, _ = st.columns([2, 5])
+    if c1.button("▶ See what it caught", type="primary", use_container_width=True):
         st.session_state["view"] = "demo"
-        st.session_state["intro_cta_mode"] = "Replay a recorded run"
-        st.rerun()
-    if c2.button("⚡ Run it live (your key)", use_container_width=True):
-        st.session_state["view"] = "demo"
-        st.session_state["intro_cta_mode"] = "Run live"
         st.rerun()
     st.markdown(
         '<p class="se-trace" style="margin-top:18px">All demo data is synthetic. '
-        "Replay needs no API key; live mode uses your own OpenRouter key and "
-        "costs pennies on cheap models.</p>",
+        "The default view needs no API key; live mode uses your own OpenRouter "
+        "key and costs pennies on cheap models.</p>",
         unsafe_allow_html=True,
     )

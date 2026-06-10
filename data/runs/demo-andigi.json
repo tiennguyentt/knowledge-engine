@@ -1,0 +1,1404 @@
+{
+  "meta": {
+    "kind": "scripted-demo",
+    "concept": "spec-red-team",
+    "model": "scripted/deterministic",
+    "base_url": "-",
+    "duration_seconds": 0.0,
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "token_budget": 150000,
+    "partial_reason": "",
+    "truth_hierarchy": "Truth hierarchy. Two categories of truth, never to be confused:\n\nBUSINESS RULES (what the system SHOULD do) - higher authority wins, conflicts\nmust still be flagged, never silently dropped:\n1. CEO/CTO decision        - explicit decisions stated by the decision-maker\n2. Written policy/contract - signed documents and published policy\n3. Ops statement           - operational practice described by leads\n4. Anecdote                - individual recollections, support stories\n\nARTIFACT STATE (what the system CURRENTLY does) - code and database are\nabsolute facts about current behavior; no spoken claim can override them.\nWhen intended behavior (business rule) and artifact state diverge, that gap\nis real and must surface as an explicit migration requirement.\n",
+    "evidence_files": [
+      "code-claims-sla.py.txt",
+      "db-claims-schema.sql",
+      "policy-claims-handling.md",
+      "transcript-01-founder-direction.md",
+      "transcript-02-claims-ops.md"
+    ],
+    "gate_version": "v1.0",
+    "note": "Deterministic scripted content executed through the REAL engine (real code gate, real amendment application, real eval-log). Run live mode with your own key for a fully model-generated run."
+  },
+  "stages": {
+    "advisor": {
+      "items": [
+        {
+          "severity": "S1",
+          "concern": "Fraud investigations (R4) have a retention rule but no decision SLA — investigations can age indefinitely while a customer waits.",
+          "suggestion": "Consider a time-bound: investigator decision within N business days, N decided with claims ops."
+        },
+        {
+          "severity": "S2",
+          "concern": "FNOL rejection copy (lapsed policy, R1) is user-facing and Vietnamese-first users will see it verbatim.",
+          "suggestion": "Add localized, plain-language rejection messages to the UX backlog."
+        }
+      ],
+      "verdict": "MINOR_POLISH"
+    },
+    "wiki": {
+      "project_summary": "AnDigi v1 ships claims FNOL with AI triage: app-based filing, instant auto-approval for low-value clean claims, 48-hour payouts, risk-based e-KYC, and human investigators for fraud.",
+      "claims": [
+        {
+          "id": "W1",
+          "topic": "FNOL",
+          "claim": "Customers file the loss in the app with photos, a description and the incident date.",
+          "authority": "CEO decision",
+          "claim_class": "decision",
+          "sources": [
+            {
+              "source_file": "transcript-01-founder-direction.md",
+              "source_type": "transcript",
+              "locator": "CEO, line 9",
+              "speaker": "CEO",
+              "quote": "customers file the loss in the app — photos, a description, the incident date. No call centers."
+            }
+          ]
+        },
+        {
+          "id": "W2",
+          "topic": "Auto-approval",
+          "claim": "Claims under 5,000,000 VND that pass AI triage with no fraud flag are approved instantly with no human in the path.",
+          "authority": "CEO decision",
+          "claim_class": "decision",
+          "sources": [
+            {
+              "source_file": "transcript-01-founder-direction.md",
+              "source_type": "transcript",
+              "locator": "CEO, line 12",
+              "speaker": "CEO",
+              "quote": "claims under 5 million VND that pass AI triage get auto-approved instantly. No human in that path."
+            }
+          ]
+        },
+        {
+          "id": "W3",
+          "topic": "Payout SLA",
+          "claim": "Approved claims pay out within 48 hours of the approval decision.",
+          "authority": "CEO decision",
+          "claim_class": "decision",
+          "sources": [
+            {
+              "source_file": "transcript-01-founder-direction.md",
+              "source_type": "transcript",
+              "locator": "CEO, line 22",
+              "speaker": "CEO",
+              "quote": "Forty-eight hours from approval to money in the customer's account."
+            }
+          ]
+        },
+        {
+          "id": "W4",
+          "topic": "e-KYC",
+          "claim": "Identity is verified once at onboarding; re-verification happens only when a risk flag fires.",
+          "authority": "CEO decision",
+          "claim_class": "decision",
+          "sources": [
+            {
+              "source_file": "transcript-01-founder-direction.md",
+              "source_type": "transcript",
+              "locator": "CEO, line 27",
+              "speaker": "CEO",
+              "quote": "Customers verify identity once at onboarding. We do not ask again unless a risk flag fires."
+            }
+          ]
+        },
+        {
+          "id": "W5",
+          "topic": "e-KYC regulation",
+          "claim": "No current regulation requires periodic re-verification of e-KYC for policyholders; re-verification is risk-based at the insurer's discretion.",
+          "authority": "Ops statement",
+          "claim_class": "fact",
+          "sources": [
+            {
+              "source_file": "transcript-02-claims-ops.md",
+              "source_type": "transcript",
+              "locator": "Compliance Officer, line 21",
+              "speaker": "Compliance Officer",
+              "quote": "No current regulation requires periodic re-verification of e-KYC for policyholders."
+            }
+          ]
+        },
+        {
+          "id": "W6",
+          "topic": "Fraud",
+          "claim": "Any fraud flag routes to a human investigator; the AI never clears its own fraud flag.",
+          "authority": "CEO decision",
+          "claim_class": "decision",
+          "sources": [
+            {
+              "source_file": "transcript-01-founder-direction.md",
+              "source_type": "transcript",
+              "locator": "CEO, line 32",
+              "speaker": "CEO",
+              "quote": "Any fraud flag routes to a human investigator, always. The AI never clears its own fraud flag."
+            }
+          ]
+        },
+        {
+          "id": "W7",
+          "topic": "Fraud records",
+          "claim": "Fraud investigation records are retained for ten years.",
+          "authority": "Written policy",
+          "claim_class": "fact",
+          "sources": [
+            {
+              "source_file": "policy-claims-handling.md",
+              "source_type": "doc",
+              "locator": "Section 9.2",
+              "speaker": "",
+              "quote": "Investigation records are retained for ten (10) years."
+            },
+            {
+              "source_file": "transcript-02-claims-ops.md",
+              "source_type": "transcript",
+              "locator": "Compliance Officer, line 27",
+              "speaker": "Compliance Officer",
+              "quote": "audit trail retained for ten years"
+            }
+          ]
+        },
+        {
+          "id": "W8",
+          "topic": "High-value claims",
+          "claim": "Claims of 5,000,000 VND or more get a human adjuster decision within 3 business days.",
+          "authority": "CEO decision",
+          "claim_class": "decision",
+          "sources": [
+            {
+              "source_file": "transcript-01-founder-direction.md",
+              "source_type": "transcript",
+              "locator": "CEO, line 36",
+              "speaker": "CEO",
+              "quote": "Human adjuster reviews, decision within 3 business days."
+            }
+          ]
+        },
+        {
+          "id": "W9",
+          "topic": "Review policy",
+          "claim": "The published claims policy requires a licensed human adjuster to review every claim before any payout decision.",
+          "authority": "Written policy",
+          "claim_class": "fact",
+          "sources": [
+            {
+              "source_file": "policy-claims-handling.md",
+              "source_type": "doc",
+              "locator": "Section 4.1",
+              "speaker": "",
+              "quote": "Every claim is reviewed by a licensed human adjuster before any payout decision is issued."
+            }
+          ]
+        },
+        {
+          "id": "W10",
+          "topic": "Current practice",
+          "claim": "Today every claim of any size goes through a human adjuster, and the team works to roughly a five-day payout turnaround.",
+          "authority": "Ops statement",
+          "claim_class": "fact",
+          "sources": [
+            {
+              "source_file": "transcript-02-claims-ops.md",
+              "source_type": "transcript",
+              "locator": "Claims Ops Lead, lines 9-16",
+              "speaker": "Claims Ops Lead",
+              "quote": "today every claim, any size, goes through a human adjuster before payout … roughly a five-day turnaround after approval."
+            }
+          ]
+        },
+        {
+          "id": "W11",
+          "topic": "Payout policy",
+          "claim": "The published policy promises payout within 48 hours of approval.",
+          "authority": "Written policy",
+          "claim_class": "fact",
+          "sources": [
+            {
+              "source_file": "policy-claims-handling.md",
+              "source_type": "doc",
+              "locator": "Section 5.1",
+              "speaker": "",
+              "quote": "Approved claims are paid within 48 hours of the approval decision."
+            }
+          ]
+        },
+        {
+          "id": "W12",
+          "topic": "Payout code",
+          "claim": "Production code sets PAYOUT_SLA_HOURS = 120, i.e. five days from approval to disbursement.",
+          "authority": "Artifact state",
+          "claim_class": "artifact-state",
+          "sources": [
+            {
+              "source_file": "code-claims-sla.py.txt",
+              "source_type": "code",
+              "locator": "sla.py line 5",
+              "speaker": "",
+              "quote": "PAYOUT_SLA_HOURS = 120  # 5 days from approval to disbursement"
+            }
+          ]
+        },
+        {
+          "id": "W13",
+          "topic": "Payout schema",
+          "claim": "The claims table defaults payout_due_days to 5.",
+          "authority": "Artifact state",
+          "claim_class": "artifact-state",
+          "sources": [
+            {
+              "source_file": "db-claims-schema.sql",
+              "source_type": "db",
+              "locator": "claims.payout_due_days",
+              "speaker": "",
+              "quote": "payout_due_days INTEGER NOT NULL DEFAULT 5"
+            }
+          ]
+        }
+      ]
+    },
+    "conflicts": {
+      "conflicts": [
+        {
+          "id": "C1",
+          "kind": "business-rule",
+          "claim_ids": [
+            "W2",
+            "W9",
+            "W10"
+          ],
+          "description": "The CEO mandates instant auto-approval with no human in the path for low-value claims, while the published claims policy (4.1) requires a human adjuster to review EVERY claim before payout — and current practice follows the policy.",
+          "winning_claim_id": "W2",
+          "winning_authority": "CEO decision",
+          "resolution": "Spec implements auto-approval per W2, but the published policy is what auditors see: policy section 4.1 must be amended BEFORE launch, and that is a human decision, not a spec edit.",
+          "needs_human_confirmation": true
+        },
+        {
+          "id": "C2",
+          "kind": "artifact-state-gap",
+          "claim_ids": [
+            "W3",
+            "W11",
+            "W12",
+            "W13",
+            "W10"
+          ],
+          "description": "Intended payout SLA is 48 hours (CEO decision W3, policy 5.1 W11) but the system CURRENTLY pays in 5 days: code hard-codes PAYOUT_SLA_HOURS=120 (W12), the DB defaults payout_due_days=5 (W13), and ops works to ~5 days (W10).",
+          "winning_claim_id": "W3",
+          "winning_authority": "CEO decision",
+          "resolution": "The 48-hour target stands; the 120-hour artifact state is a fact no one can out-talk. The gap becomes an explicit migration requirement (code + schema + open-claims backfill).",
+          "needs_human_confirmation": false
+        }
+      ],
+      "notes": "W4 vs W5 are aligned (once-at-onboarding + risk-based re-verification). W6/W7/W8 are consistent across transcript and policy. R3's 90-day re-verification claim has NO supporting claim anywhere in the corpus — that is a grading matter, not a conflict between sources."
+    },
+    "gate": {
+      "gate_version": "v1.0",
+      "hits": [
+        {
+          "rule_id": "G1",
+          "rule_class": "hedge-word",
+          "severity": "error",
+          "requirement_id": "R2",
+          "excerpt": "…auto-approved instantly, and the system should disburse the payout promptly after appr",
+          "message": "hedge-word: \"should\"",
+          "suggestion": "Replace the hedge with a definite behavior."
+        },
+        {
+          "rule_id": "G2",
+          "rule_class": "vague-quantity",
+          "severity": "error",
+          "requirement_id": "R2",
+          "excerpt": "…d the system should disburse the payout promptly after approval.",
+          "message": "vague-quantity: \"promptly\"",
+          "suggestion": "Replace with an explicit number or bound."
+        },
+        {
+          "rule_id": "G2",
+          "rule_class": "vague-quantity",
+          "severity": "error",
+          "requirement_id": "R2",
+          "excerpt": "…runs, then the payout will be processed quickly.",
+          "message": "vague-quantity: \"quickly\"",
+          "suggestion": "Replace with an explicit number or bound."
+        },
+        {
+          "rule_id": "G3",
+          "rule_class": "passive-future-voice",
+          "severity": "warning",
+          "requirement_id": "R2",
+          "excerpt": "…when disbursement runs, then the payout will be processed quickly.",
+          "message": "passive-future-voice: \"will be processed\"",
+          "suggestion": "Rewrite in active voice: actor + verb + object."
+        },
+        {
+          "rule_id": "G7",
+          "rule_class": "missing-provenance",
+          "severity": "error",
+          "requirement_id": "R3",
+          "excerpt": "Periodic e-KYC re-verification",
+          "message": "missing-provenance: requirement traces to zero claims",
+          "suggestion": "Link the requirement to wiki claim ids or tag the assumption."
+        },
+        {
+          "rule_id": "G6",
+          "rule_class": "tech-prescription-untagged",
+          "severity": "error",
+          "requirement_id": "R5",
+          "excerpt": "Triage session tokens are stored in Redis with a 30-minute TTL to keep the FNOL f",
+          "message": "tech-prescription-untagged: \"Redis\"",
+          "suggestion": "Tag with [needs-dev-input] or remove the implementation choice."
+        }
+      ],
+      "errors": 5,
+      "warnings": 1,
+      "verdict": "blocking"
+    },
+    "grade_round1": {
+      "checklist": [
+        {
+          "dimension": "D1",
+          "item": "Every source decision is addressed by a requirement",
+          "result": "PASS",
+          "note": ""
+        },
+        {
+          "dimension": "D1",
+          "item": "Conflict resolutions reflected in the draft",
+          "result": "FAIL",
+          "note": "C1: R2 ignores policy 4.1 conflict entirely; no policy-update precondition anywhere."
+        },
+        {
+          "dimension": "D1",
+          "item": "Artifact-state gaps surfaced as migration work",
+          "result": "FAIL",
+          "note": "C2: 48h payout promised while code/DB enforce 5 days; no migration requirement exists."
+        },
+        {
+          "dimension": "D2",
+          "item": "At least 3 edge cases beyond sources",
+          "result": "FAIL",
+          "note": "Only lapsed-policy edge in R1; no triage-service-down, no partial-photo, no payout-failure path."
+        },
+        {
+          "dimension": "D2",
+          "item": "Failure path per major requirement",
+          "result": "FAIL",
+          "note": "R2 has no behavior for disbursement failure after instant approval."
+        },
+        {
+          "dimension": "D3",
+          "item": "Every domain fact traces to a claim id",
+          "result": "FAIL",
+          "note": "R3 cites 'Circular 14/2026' — no such source exists in the corpus; W5 says the opposite."
+        },
+        {
+          "dimension": "D3",
+          "item": "No invented numbers or SLAs",
+          "result": "PASS",
+          "note": ""
+        },
+        {
+          "dimension": "D4",
+          "item": "Explicit out-of-scope present",
+          "result": "PASS",
+          "note": ""
+        },
+        {
+          "dimension": "D5",
+          "item": "No hedge words / vague quantities",
+          "result": "FAIL",
+          "note": "R2: 'should disburse … promptly', 'processed quickly' — gate hits G1/G2 confirm."
+        },
+        {
+          "dimension": "D5",
+          "item": "Acceptance criteria independently testable",
+          "result": "FAIL",
+          "note": "R2 AC2 unmeasurable; R5 prescribes Redis without [needs-dev-input] (gate G6)."
+        }
+      ],
+      "findings": [
+        {
+          "id": "F1",
+          "dimension": "D3",
+          "priority": "P0",
+          "requirement_id": "R3",
+          "evidence_ref": "W5",
+          "claim_class_violation": "regulatory-assumption without source",
+          "description": "R3 invents a regulatory obligation ('Circular 14/2026', 90-day e-KYC re-verification). No source in the corpus supports it, and the Compliance Officer explicitly states no such regulation exists (W5). Shipping this creates fake compliance work and contradicts the CEO's onboarding-only decision (W4).",
+          "suggested_fix": "Rewrite R3 to once-at-onboarding + risk-based re-verification per W4/W5; tag any residual regulatory doubt [needs-compliance-confirm].",
+          "assigned_role": "compliance"
+        },
+        {
+          "id": "F2",
+          "dimension": "D1",
+          "priority": "P1",
+          "requirement_id": "R2",
+          "evidence_ref": "C1",
+          "claim_class_violation": "",
+          "description": "R2's no-human auto-approval contradicts published policy 4.1 (W9) which auditors hold us to. The conflict is resolved by authority (CEO wins) but the spec must carry the launch precondition: policy amendment.",
+          "suggested_fix": "Add a launch precondition AC: policy section 4.1 amended before auto-approval activates.",
+          "assigned_role": "po"
+        },
+        {
+          "id": "F3",
+          "dimension": "D5",
+          "priority": "P1",
+          "requirement_id": "R2",
+          "evidence_ref": "W3",
+          "claim_class_violation": "",
+          "description": "Payout timing is 'promptly'/'quickly' — untestable. The decided number exists: 48 hours (W3, W11).",
+          "suggested_fix": "Replace with the explicit 48-hour bound, measured approval→disbursement.",
+          "assigned_role": "qa"
+        },
+        {
+          "id": "F4",
+          "dimension": "D1",
+          "priority": "P1",
+          "requirement_id": "R2",
+          "evidence_ref": "C2",
+          "claim_class_violation": "",
+          "description": "The system CURRENTLY enforces a 5-day payout (code W12, schema W13). Promising 48h without a migration requirement ships a broken promise.",
+          "suggested_fix": "Add migration requirement: PAYOUT_SLA_HOURS 120→48, payout_due_days default 5→2, decide handling of in-flight claims.",
+          "assigned_role": "eng"
+        },
+        {
+          "id": "F5",
+          "dimension": "D5",
+          "priority": "P1",
+          "requirement_id": "R5",
+          "evidence_ref": "",
+          "claim_class_violation": "recommendation stated as fact",
+          "description": "R5 prescribes Redis — an implementation choice with no claim behind it (gate G6).",
+          "suggested_fix": "Restate as a server-side session store requirement; tag the store choice [needs-dev-input].",
+          "assigned_role": "sa"
+        },
+        {
+          "id": "F6",
+          "dimension": "D2",
+          "priority": "P2",
+          "requirement_id": "R1",
+          "evidence_ref": "W1",
+          "claim_class_violation": "",
+          "description": "R1 lacks negative paths beyond lapsed policy: no photo-upload failure or duplicate-FNOL handling.",
+          "suggested_fix": "Add duplicate-claim and upload-failure ACs.",
+          "assigned_role": "ba"
+        }
+      ],
+      "scores": {
+        "D1": 45,
+        "D2": 40,
+        "D3": 35,
+        "D4": 85,
+        "D5": 50
+      },
+      "overall_score": 61,
+      "verdict": "NEEDS_REVISION"
+    },
+    "debate": {
+      "phases": [
+        {
+          "key": "product",
+          "title": "Product & Requirements Integrity",
+          "eligible": [
+            "po",
+            "ba",
+            "ux"
+          ],
+          "events": [
+            {
+              "type": "router",
+              "issue_id": "F2",
+              "summoned_roles": [
+                "po",
+                "ba"
+              ],
+              "focused_question": "R2 activates no-human auto-approval while published policy 4.1 requires human review of every claim. What must the spec carry so launch does not contradict the audited policy?",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 1
+            },
+            {
+              "type": "turn",
+              "phase": "product",
+              "role": "po",
+              "issue_id": "F2",
+              "work_notes": {
+                "observation": "Compared R2 against policy 4.1 (W9) and the CEO decision (W2); checked C1 resolution.",
+                "evidence_refs": [
+                  "F2",
+                  "C1",
+                  "W2",
+                  "W9"
+                ],
+                "risk": "Auditors hold us to the published policy, not to meeting decisions.",
+                "proposed_change": "Add launch-precondition AC to R2: policy 4.1 amended before auto-approval activates.",
+                "confidence": "high",
+                "open_assumption": "CEO will approve the policy amendment quickly."
+              },
+              "stance": "concede",
+              "message": "F2 stands. The CEO decision wins inside the product, but the regulator reads policy 4.1, not our transcript. I am adding a launch precondition to R2: auto-approval stays dark until the published policy is amended. The policy change itself is a CEO/legal action — I am putting it on the human decision list, not pretending a spec edit fixes it.",
+              "refs": [
+                "F2",
+                "R2",
+                "C1"
+              ]
+            },
+            {
+              "type": "turn",
+              "phase": "product",
+              "role": "ba",
+              "issue_id": "F2",
+              "work_notes": {
+                "observation": "Traced R2's ACs for coverage of the C1 precondition and operational fallback.",
+                "evidence_refs": [
+                  "F2",
+                  "W10"
+                ],
+                "risk": "If the precondition slips, ops silently falls back to manual review with no stated SLA.",
+                "proposed_change": "Fallback AC: while the precondition is unmet, claims under 5M follow R6's human review path.",
+                "confidence": "medium",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "Conceding the precondition is not enough: specify what happens while it is unmet. Today's practice (W10) is human review — so R2 needs an explicit fallback AC: until policy 4.1 is amended, sub-5M claims route through the R6 adjuster path. Otherwise launch day becomes an undefined state.",
+              "refs": [
+                "F2",
+                "R2",
+                "R6"
+              ]
+            },
+            {
+              "type": "router",
+              "issue_id": "",
+              "summoned_roles": [],
+              "focused_question": "",
+              "close_phase": true,
+              "net_movement": "R2 gains a policy-amendment launch precondition and an explicit manual-review fallback while it is unmet. The policy change itself is escalated to the human decision list.",
+              "iteration": 2
+            },
+            {
+              "type": "no_objection",
+              "phase": "product",
+              "role": "ux"
+            }
+          ]
+        },
+        {
+          "key": "architecture",
+          "title": "Architecture & Feasibility",
+          "eligible": [
+            "sa",
+            "eng"
+          ],
+          "events": [
+            {
+              "type": "router",
+              "issue_id": "F4",
+              "summoned_roles": [
+                "sa",
+                "eng"
+              ],
+              "focused_question": "Code and schema enforce a 5-day payout while the spec promises 48 hours. Define the migration requirement that closes C2.",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 1
+            },
+            {
+              "type": "turn",
+              "phase": "architecture",
+              "role": "sa",
+              "issue_id": "F4",
+              "work_notes": {
+                "observation": "Read sla.py (W12) and claims schema default (W13); mapped every consumer of payout_due_days.",
+                "evidence_refs": [
+                  "F4",
+                  "C2",
+                  "W12",
+                  "W13"
+                ],
+                "risk": "Changing the constant without backfilling in-flight claims creates two SLA regimes silently.",
+                "proposed_change": "Migration req: code 120→48h, schema default 5→2, explicit decision on in-flight claims.",
+                "confidence": "high",
+                "open_assumption": "No other service hard-codes the 5-day assumption."
+              },
+              "stance": "challenge",
+              "message": "F4 is real and bigger than a constant: PAYOUT_SLA_HOURS=120 (sla.py:5) and payout_due_days DEFAULT 5 are artifact state — they will out-vote the spec at runtime. The migration requirement must cover code, schema default, and a stated rule for claims approved before cutover. Without the third item we change the promise mid-flight for open claims.",
+              "refs": [
+                "F4",
+                "C2",
+                "R2"
+              ]
+            },
+            {
+              "type": "turn",
+              "phase": "architecture",
+              "role": "eng",
+              "issue_id": "F4",
+              "work_notes": {
+                "observation": "Checked disbursement path for idempotency under the tighter 48h window.",
+                "evidence_refs": [
+                  "F4",
+                  "W3"
+                ],
+                "risk": "Faster SLA means retries fire sooner; duplicate disbursement on retry is real money.",
+                "proposed_change": "One payout per claim id, enforced server-side; failure path AC on R2.",
+                "confidence": "high",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "Supporting the migration with one addition: at 48 hours the retry window compresses, so disbursement must be idempotent — exactly one payout per claim id enforced server-side — and R2 needs a failure-path AC for when disbursement fails after instant approval. Otherwise speed converts directly into double-payment risk.",
+              "refs": [
+                "F4",
+                "R2"
+              ]
+            },
+            {
+              "type": "router",
+              "issue_id": "",
+              "summoned_roles": [],
+              "focused_question": "",
+              "close_phase": true,
+              "net_movement": "C2 becomes migration requirement R7 (code 120→48h, schema default 5→2, in-flight claims rule) plus idempotent disbursement and a failure-path AC on R2. Artifact state and promise now converge by construction.",
+              "iteration": 2
+            }
+          ]
+        },
+        {
+          "key": "quality",
+          "title": "Quality & Operations",
+          "eligible": [
+            "qa",
+            "devops"
+          ],
+          "events": [
+            {
+              "type": "router",
+              "issue_id": "F3",
+              "summoned_roles": [
+                "qa"
+              ],
+              "focused_question": "R2's payout wording is untestable ('promptly', 'quickly'). Fix the measurability.",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 1
+            },
+            {
+              "type": "turn",
+              "phase": "quality",
+              "role": "qa",
+              "issue_id": "F3",
+              "work_notes": {
+                "observation": "Tested R2 ACs for measurability; cross-checked the decided bound in W3/W11.",
+                "evidence_refs": [
+                  "F3",
+                  "W3",
+                  "W11"
+                ],
+                "risk": "'Quickly' cannot fail a test, so it cannot pass one either.",
+                "proposed_change": "Bound: disbursement completes ≤48h from approval timestamp; measured field-to-field.",
+                "confidence": "high",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "F3: 'promptly' and 'quickly' are unfalsifiable. The decided number exists — 48 hours (W3, policy 5.1). The AC must read: payout completes within 48 hours of approval, measured approved_at → paid_at. That also gives the migration in R7 its acceptance test for free.",
+              "refs": [
+                "F3",
+                "R2"
+              ]
+            },
+            {
+              "type": "router",
+              "issue_id": "",
+              "summoned_roles": [],
+              "focused_question": "",
+              "close_phase": true,
+              "net_movement": "R2's payout language is replaced by the explicit 48-hour bound measured approved_at→paid_at, which doubles as R7's acceptance test. No open quality findings remain.",
+              "iteration": 2
+            },
+            {
+              "type": "no_objection",
+              "phase": "quality",
+              "role": "devops"
+            }
+          ]
+        },
+        {
+          "key": "risk",
+          "title": "Risk, Compliance & Security",
+          "eligible": [
+            "compliance",
+            "security"
+          ],
+          "events": [
+            {
+              "type": "router",
+              "issue_id": "F1",
+              "summoned_roles": [
+                "compliance"
+              ],
+              "focused_question": "R3 cites 'Circular 14/2026' requiring 90-day e-KYC re-verification. No source in the corpus supports it. Rule on it.",
+              "close_phase": false,
+              "net_movement": "",
+              "iteration": 1
+            },
+            {
+              "type": "turn",
+              "phase": "risk",
+              "role": "compliance",
+              "issue_id": "F1",
+              "work_notes": {
+                "observation": "Searched the corpus for any source behind 'Circular 14/2026'; found none. W5 states the opposite.",
+                "evidence_refs": [
+                  "F1",
+                  "W4",
+                  "W5"
+                ],
+                "risk": "An invented regulatory obligation in a published spec is audit poison and blocks claims for no legal reason.",
+                "proposed_change": "Rewrite R3: verify once at onboarding, risk-based re-verification; tag residual doubt [needs-compliance-confirm].",
+                "confidence": "high",
+                "open_assumption": ""
+              },
+              "stance": "challenge",
+              "message": "F1 is the worst kind of error: a confident, invented regulation. No 'Circular 14/2026' exists in our corpus; the Compliance Officer's statement (W5) and the CEO decision (W4) both say verification is once-at-onboarding with risk-based re-checks. R3 must be rewritten to that rule. If product believes a real circular exists, the burden is a citation — until then the claim carries [needs-compliance-confirm] and nothing is blocked on a 90-day clock.",
+              "refs": [
+                "F1",
+                "R3"
+              ]
+            },
+            {
+              "type": "router",
+              "issue_id": "",
+              "summoned_roles": [],
+              "focused_question": "",
+              "close_phase": true,
+              "net_movement": "The invented 90-day re-verification obligation is removed; R3 is rewritten to once-at-onboarding with risk-based re-verification, tagged for compliance confirmation. P0 grounding failure resolved.",
+              "iteration": 2
+            },
+            {
+              "type": "no_objection",
+              "phase": "risk",
+              "role": "security"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "phase": "product",
+          "role": "po",
+          "issue_id": "F2",
+          "work_notes": {
+            "observation": "Compared R2 against policy 4.1 (W9) and the CEO decision (W2); checked C1 resolution.",
+            "evidence_refs": [
+              "F2",
+              "C1",
+              "W2",
+              "W9"
+            ],
+            "risk": "Auditors hold us to the published policy, not to meeting decisions.",
+            "proposed_change": "Add launch-precondition AC to R2: policy 4.1 amended before auto-approval activates.",
+            "confidence": "high",
+            "open_assumption": "CEO will approve the policy amendment quickly."
+          },
+          "stance": "concede",
+          "message": "F2 stands. The CEO decision wins inside the product, but the regulator reads policy 4.1, not our transcript. I am adding a launch precondition to R2: auto-approval stays dark until the published policy is amended. The policy change itself is a CEO/legal action — I am putting it on the human decision list, not pretending a spec edit fixes it.",
+          "refs": [
+            "F2",
+            "R2",
+            "C1"
+          ]
+        },
+        {
+          "phase": "product",
+          "role": "ba",
+          "issue_id": "F2",
+          "work_notes": {
+            "observation": "Traced R2's ACs for coverage of the C1 precondition and operational fallback.",
+            "evidence_refs": [
+              "F2",
+              "W10"
+            ],
+            "risk": "If the precondition slips, ops silently falls back to manual review with no stated SLA.",
+            "proposed_change": "Fallback AC: while the precondition is unmet, claims under 5M follow R6's human review path.",
+            "confidence": "medium",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "Conceding the precondition is not enough: specify what happens while it is unmet. Today's practice (W10) is human review — so R2 needs an explicit fallback AC: until policy 4.1 is amended, sub-5M claims route through the R6 adjuster path. Otherwise launch day becomes an undefined state.",
+          "refs": [
+            "F2",
+            "R2",
+            "R6"
+          ]
+        },
+        {
+          "phase": "architecture",
+          "role": "sa",
+          "issue_id": "F4",
+          "work_notes": {
+            "observation": "Read sla.py (W12) and claims schema default (W13); mapped every consumer of payout_due_days.",
+            "evidence_refs": [
+              "F4",
+              "C2",
+              "W12",
+              "W13"
+            ],
+            "risk": "Changing the constant without backfilling in-flight claims creates two SLA regimes silently.",
+            "proposed_change": "Migration req: code 120→48h, schema default 5→2, explicit decision on in-flight claims.",
+            "confidence": "high",
+            "open_assumption": "No other service hard-codes the 5-day assumption."
+          },
+          "stance": "challenge",
+          "message": "F4 is real and bigger than a constant: PAYOUT_SLA_HOURS=120 (sla.py:5) and payout_due_days DEFAULT 5 are artifact state — they will out-vote the spec at runtime. The migration requirement must cover code, schema default, and a stated rule for claims approved before cutover. Without the third item we change the promise mid-flight for open claims.",
+          "refs": [
+            "F4",
+            "C2",
+            "R2"
+          ]
+        },
+        {
+          "phase": "architecture",
+          "role": "eng",
+          "issue_id": "F4",
+          "work_notes": {
+            "observation": "Checked disbursement path for idempotency under the tighter 48h window.",
+            "evidence_refs": [
+              "F4",
+              "W3"
+            ],
+            "risk": "Faster SLA means retries fire sooner; duplicate disbursement on retry is real money.",
+            "proposed_change": "One payout per claim id, enforced server-side; failure path AC on R2.",
+            "confidence": "high",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "Supporting the migration with one addition: at 48 hours the retry window compresses, so disbursement must be idempotent — exactly one payout per claim id enforced server-side — and R2 needs a failure-path AC for when disbursement fails after instant approval. Otherwise speed converts directly into double-payment risk.",
+          "refs": [
+            "F4",
+            "R2"
+          ]
+        },
+        {
+          "phase": "quality",
+          "role": "qa",
+          "issue_id": "F3",
+          "work_notes": {
+            "observation": "Tested R2 ACs for measurability; cross-checked the decided bound in W3/W11.",
+            "evidence_refs": [
+              "F3",
+              "W3",
+              "W11"
+            ],
+            "risk": "'Quickly' cannot fail a test, so it cannot pass one either.",
+            "proposed_change": "Bound: disbursement completes ≤48h from approval timestamp; measured field-to-field.",
+            "confidence": "high",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "F3: 'promptly' and 'quickly' are unfalsifiable. The decided number exists — 48 hours (W3, policy 5.1). The AC must read: payout completes within 48 hours of approval, measured approved_at → paid_at. That also gives the migration in R7 its acceptance test for free.",
+          "refs": [
+            "F3",
+            "R2"
+          ]
+        },
+        {
+          "phase": "risk",
+          "role": "compliance",
+          "issue_id": "F1",
+          "work_notes": {
+            "observation": "Searched the corpus for any source behind 'Circular 14/2026'; found none. W5 states the opposite.",
+            "evidence_refs": [
+              "F1",
+              "W4",
+              "W5"
+            ],
+            "risk": "An invented regulatory obligation in a published spec is audit poison and blocks claims for no legal reason.",
+            "proposed_change": "Rewrite R3: verify once at onboarding, risk-based re-verification; tag residual doubt [needs-compliance-confirm].",
+            "confidence": "high",
+            "open_assumption": ""
+          },
+          "stance": "challenge",
+          "message": "F1 is the worst kind of error: a confident, invented regulation. No 'Circular 14/2026' exists in our corpus; the Compliance Officer's statement (W5) and the CEO decision (W4) both say verification is once-at-onboarding with risk-based re-checks. R3 must be rewritten to that rule. If product believes a real circular exists, the burden is a citation — until then the claim carries [needs-compliance-confirm] and nothing is blocked on a 90-day clock.",
+          "refs": [
+            "F1",
+            "R3"
+          ]
+        }
+      ],
+      "arbiter": {
+        "amendments": [
+          {
+            "requirement_id": "R2",
+            "finding_ids": [
+              "F3"
+            ],
+            "before": "and the system should disburse the payout promptly after approval",
+            "after": "and the payout is disbursed within 48 hours of approval [W3, policy 5.1]",
+            "rationale": "Replaces hedge + vague timing with the decided, testable bound."
+          },
+          {
+            "requirement_id": "R2",
+            "finding_ids": [
+              "F3",
+              "F4"
+            ],
+            "before": "the payout will be processed quickly",
+            "after": "the payout completes within 48 hours of approval, measured from approved_at to paid_at, with exactly one disbursement per claim id enforced server-side",
+            "rationale": "Measurable bound + idempotency from the architecture phase."
+          },
+          {
+            "requirement_id": "R2",
+            "finding_ids": [
+              "F2"
+            ],
+            "before": "are auto-approved instantly",
+            "after": "are auto-approved instantly once policy section 4.1 is amended to permit automated approval (launch precondition); until then they follow the R6 human-review path",
+            "rationale": "Carries the C1 resolution: the published policy must change before the behavior ships."
+          },
+          {
+            "requirement_id": "R3",
+            "finding_ids": [
+              "F1"
+            ],
+            "before": "Per Circular 14/2026 on digital insurance distribution, customer e-KYC data must be re-verified every 90 days, and claims from customers with expired verification are held until re-verification completes.",
+            "after": "Customer e-KYC is verified once at onboarding; re-verification is triggered only by risk indicators [W4, W5, policy 7.1-7.2]. [needs-compliance-confirm: no periodic re-verification obligation exists in the evidence corpus]",
+            "rationale": "Removes an invented regulatory obligation contradicted by the corpus."
+          },
+          {
+            "requirement_id": "R5",
+            "finding_ids": [
+              "F5"
+            ],
+            "before": "Triage session tokens are stored in Redis with a 30-minute TTL",
+            "after": "Triage session state persists server-side with a 30-minute TTL [needs-dev-input: storage choice]",
+            "rationale": "Removes an unsourced implementation prescription; the choice belongs to engineering."
+          }
+        ],
+        "new_requirements": [
+          {
+            "id": "R7",
+            "title": "Payout SLA migration (artifact-state gap C2)",
+            "statement": "Engineering migrates the payout SLA from the current 5-day artifact state to the decided 48-hour bound: PAYOUT_SLA_HOURS 120 to 48 in sla.py, claims.payout_due_days default 5 to 2, and claims approved before cutover keep their original deadline.",
+            "acceptance_criteria": [
+              "Given the migration is deployed, when a claim is approved, then its payout deadline is 48 hours after approved_at.",
+              "Given a claim approved before cutover, when deadlines are computed, then the original 120-hour deadline applies.",
+              "Given the schema migration runs, when a new claim row is created, then payout_due_days defaults to 2."
+            ],
+            "source_claim_ids": [
+              "W3",
+              "W11",
+              "W12",
+              "W13"
+            ]
+          }
+        ],
+        "unresolved_human_decisions": [
+          "Policy section 4.1 contradicts the CEO's no-human auto-approval decision (C1). Amending the published, audited policy is a CEO/legal action and a LAUNCH PRECONDITION — the spec cannot resolve it.",
+          "Confirm with the regulator-facing counsel that no periodic e-KYC re-verification obligation exists (R3 carries [needs-compliance-confirm] until then)."
+        ],
+        "summary": "Five amendments and one new migration requirement: the invented regulation is removed, the payout promise becomes a measured 48-hour bound with idempotent disbursement, the policy conflict becomes an explicit launch precondition, and the code/DB artifact gap becomes requirement R7. Two decisions remain deliberately human."
+      }
+    },
+    "corrected_spec": {
+      "feature_name": "AnDigi v1 — Claims FNOL & AI Triage",
+      "summary": "Customers file first-notice-of-loss in the app. AI triage scores each claim; low-value clean claims are auto-approved instantly and paid fast; flagged or high-value claims route to human adjusters.",
+      "out_of_scope": [
+        "Underwriting and policy issuance changes",
+        "Marketing-side claim status notifications beyond app push"
+      ],
+      "requirements": [
+        {
+          "id": "R1",
+          "title": "FNOL submission",
+          "statement": "The app lets a policyholder file a claim with photos, an incident description, and the incident date, creating a claim in status fnol.",
+          "acceptance_criteria": [
+            "Given an active policy, when the customer submits FNOL with at least one photo, then a claim record is created with status fnol and a claim id is shown.",
+            "Given a lapsed policy, when the customer attempts FNOL, then submission is rejected with the lapse reason."
+          ],
+          "source_claim_ids": [
+            "W1"
+          ]
+        },
+        {
+          "id": "R2",
+          "title": "Instant auto-approval for low-value claims",
+          "statement": "Claims under 5,000,000 VND with a passing triage score and no fraud flag are auto-approved instantly once policy section 4.1 is amended to permit automated approval (launch precondition); until then they follow the R6 human-review path, and the payout is disbursed within 48 hours of approval [W3, policy 5.1].",
+          "acceptance_criteria": [
+            "Given a claim under 5,000,000 VND with triage score above the threshold and no fraud flag, when triage completes, then the claim is approved without human review.",
+            "Given an approved claim, when disbursement runs, then the payout completes within 48 hours of approval, measured from approved_at to paid_at, with exactly one disbursement per claim id enforced server-side."
+          ],
+          "source_claim_ids": [
+            "W2"
+          ]
+        },
+        {
+          "id": "R3",
+          "title": "Periodic e-KYC re-verification",
+          "statement": "Customer e-KYC is verified once at onboarding; re-verification is triggered only by risk indicators [W4, W5, policy 7.1-7.2]. [needs-compliance-confirm: no periodic re-verification obligation exists in the evidence corpus]",
+          "acceptance_criteria": [
+            "Given a customer whose last e-KYC verification is older than 90 days, when they file a claim, then the claim is held in status review until re-verification completes."
+          ],
+          "source_claim_ids": []
+        },
+        {
+          "id": "R4",
+          "title": "Fraud flag routing",
+          "statement": "Any claim with a fraud flag routes to a human investigator; the AI never clears its own fraud flag, and the investigation record is retained for ten years.",
+          "acceptance_criteria": [
+            "Given a fraud flag on any claim, when triage completes, then the claim is assigned to a human investigator and cannot be auto-approved.",
+            "Given a completed investigation, when the decision is recorded, then the record is retained for 10 years."
+          ],
+          "source_claim_ids": [
+            "W6",
+            "W7"
+          ]
+        },
+        {
+          "id": "R5",
+          "title": "Triage session storage",
+          "statement": "Triage session state persists server-side with a 30-minute TTL [needs-dev-input: storage choice] to keep the FNOL flow stateless across app restarts.",
+          "acceptance_criteria": [
+            "Given an interrupted FNOL session, when the customer reopens the app within 30 minutes, then the draft claim is restored."
+          ],
+          "source_claim_ids": [
+            "W1"
+          ]
+        },
+        {
+          "id": "R6",
+          "title": "High-value claim review",
+          "statement": "Claims of 5,000,000 VND or more are reviewed by a human adjuster who records a decision within 3 business days.",
+          "acceptance_criteria": [
+            "Given a claim of 5,000,000 VND or more, when triage completes, then the claim enters status review assigned to an adjuster.",
+            "Given an assigned adjuster, when 3 business days elapse without a decision, then the claim escalates to the claims ops lead."
+          ],
+          "source_claim_ids": [
+            "W8"
+          ]
+        },
+        {
+          "id": "R7",
+          "title": "Payout SLA migration (artifact-state gap C2)",
+          "statement": "Engineering migrates the payout SLA from the current 5-day artifact state to the decided 48-hour bound: PAYOUT_SLA_HOURS 120 to 48 in sla.py, claims.payout_due_days default 5 to 2, and claims approved before cutover keep their original deadline.",
+          "acceptance_criteria": [
+            "Given the migration is deployed, when a claim is approved, then its payout deadline is 48 hours after approved_at.",
+            "Given a claim approved before cutover, when deadlines are computed, then the original 120-hour deadline applies.",
+            "Given the schema migration runs, when a new claim row is created, then payout_due_days defaults to 2."
+          ],
+          "source_claim_ids": [
+            "W3",
+            "W11",
+            "W12",
+            "W13"
+          ]
+        }
+      ]
+    },
+    "gate_round2": {
+      "gate_version": "v1.0",
+      "hits": [
+        {
+          "rule_id": "G7",
+          "rule_class": "missing-provenance",
+          "severity": "error",
+          "requirement_id": "R3",
+          "excerpt": "Periodic e-KYC re-verification",
+          "message": "missing-provenance: requirement traces to zero claims",
+          "suggestion": "Link the requirement to wiki claim ids or tag the assumption."
+        }
+      ],
+      "errors": 1,
+      "warnings": 0,
+      "verdict": "blocking"
+    },
+    "grade_round2": {
+      "checklist": [
+        {
+          "dimension": "D1",
+          "item": "Every source decision is addressed by a requirement",
+          "result": "PASS",
+          "note": ""
+        },
+        {
+          "dimension": "D1",
+          "item": "Conflict resolutions reflected in the draft",
+          "result": "PASS",
+          "note": ""
+        },
+        {
+          "dimension": "D1",
+          "item": "Artifact-state gaps surfaced as migration work",
+          "result": "PASS",
+          "note": "R7 covers code, schema and in-flight claims."
+        },
+        {
+          "dimension": "D2",
+          "item": "At least 3 edge cases beyond sources",
+          "result": "PASS",
+          "note": "Fallback path, in-flight claims, disbursement failure/idempotency."
+        },
+        {
+          "dimension": "D2",
+          "item": "Failure path per major requirement",
+          "result": "FAIL",
+          "note": "R1 still lacks upload-failure and duplicate-FNOL paths (P2, deferred)."
+        },
+        {
+          "dimension": "D3",
+          "item": "Every domain fact traces to a claim id",
+          "result": "FAIL",
+          "note": "R3 still carries empty source links pending compliance confirmation (P2, tagged)."
+        },
+        {
+          "dimension": "D3",
+          "item": "No invented numbers or SLAs",
+          "result": "PASS",
+          "note": ""
+        },
+        {
+          "dimension": "D4",
+          "item": "Explicit out-of-scope present",
+          "result": "PASS",
+          "note": ""
+        },
+        {
+          "dimension": "D5",
+          "item": "No hedge words / vague quantities",
+          "result": "PASS",
+          "note": "Gate round 2 confirms G1/G2 clear."
+        },
+        {
+          "dimension": "D5",
+          "item": "Acceptance criteria independently testable",
+          "result": "PASS",
+          "note": ""
+        }
+      ],
+      "findings": [
+        {
+          "id": "F7",
+          "dimension": "D2",
+          "priority": "P2",
+          "requirement_id": "R1",
+          "evidence_ref": "W1",
+          "claim_class_violation": "",
+          "description": "Upload-failure and duplicate-FNOL negative paths still missing (carried from F6).",
+          "suggested_fix": "Add both ACs in the next revision.",
+          "assigned_role": "ba"
+        },
+        {
+          "id": "F8",
+          "dimension": "D3",
+          "priority": "P2",
+          "requirement_id": "R3",
+          "evidence_ref": "W5",
+          "claim_class_violation": "",
+          "description": "R3's [needs-compliance-confirm] tag is correct but its source links stay empty until counsel confirms.",
+          "suggested_fix": "Attach the confirmation note as a source when it arrives.",
+          "assigned_role": "compliance"
+        }
+      ],
+      "scores": {
+        "D1": 95,
+        "D2": 85,
+        "D3": 90,
+        "D4": 95,
+        "D5": 95
+      },
+      "overall_score": 92,
+      "verdict": "SATISFIED_WITH_DEFERRED"
+    },
+    "draft_spec": {
+      "feature_name": "AnDigi v1 — Claims FNOL & AI Triage",
+      "summary": "Customers file first-notice-of-loss in the app. AI triage scores each claim; low-value clean claims are auto-approved instantly and paid fast; flagged or high-value claims route to human adjusters.",
+      "out_of_scope": [
+        "Underwriting and policy issuance changes",
+        "Marketing-side claim status notifications beyond app push"
+      ],
+      "requirements": [
+        {
+          "id": "R1",
+          "title": "FNOL submission",
+          "statement": "The app lets a policyholder file a claim with photos, an incident description, and the incident date, creating a claim in status fnol.",
+          "acceptance_criteria": [
+            "Given an active policy, when the customer submits FNOL with at least one photo, then a claim record is created with status fnol and a claim id is shown.",
+            "Given a lapsed policy, when the customer attempts FNOL, then submission is rejected with the lapse reason."
+          ],
+          "source_claim_ids": [
+            "W1"
+          ]
+        },
+        {
+          "id": "R2",
+          "title": "Instant auto-approval for low-value claims",
+          "statement": "Claims under 5,000,000 VND with a passing triage score and no fraud flag are auto-approved instantly, and the system should disburse the payout promptly after approval.",
+          "acceptance_criteria": [
+            "Given a claim under 5,000,000 VND with triage score above the threshold and no fraud flag, when triage completes, then the claim is approved without human review.",
+            "Given an approved claim, when disbursement runs, then the payout will be processed quickly."
+          ],
+          "source_claim_ids": [
+            "W2"
+          ]
+        },
+        {
+          "id": "R3",
+          "title": "Periodic e-KYC re-verification",
+          "statement": "Per Circular 14/2026 on digital insurance distribution, customer e-KYC data must be re-verified every 90 days, and claims from customers with expired verification are held until re-verification completes.",
+          "acceptance_criteria": [
+            "Given a customer whose last e-KYC verification is older than 90 days, when they file a claim, then the claim is held in status review until re-verification completes."
+          ],
+          "source_claim_ids": []
+        },
+        {
+          "id": "R4",
+          "title": "Fraud flag routing",
+          "statement": "Any claim with a fraud flag routes to a human investigator; the AI never clears its own fraud flag, and the investigation record is retained for ten years.",
+          "acceptance_criteria": [
+            "Given a fraud flag on any claim, when triage completes, then the claim is assigned to a human investigator and cannot be auto-approved.",
+            "Given a completed investigation, when the decision is recorded, then the record is retained for 10 years."
+          ],
+          "source_claim_ids": [
+            "W6",
+            "W7"
+          ]
+        },
+        {
+          "id": "R5",
+          "title": "Triage session storage",
+          "statement": "Triage session tokens are stored in Redis with a 30-minute TTL to keep the FNOL flow stateless across app restarts.",
+          "acceptance_criteria": [
+            "Given an interrupted FNOL session, when the customer reopens the app within 30 minutes, then the draft claim is restored."
+          ],
+          "source_claim_ids": [
+            "W1"
+          ]
+        },
+        {
+          "id": "R6",
+          "title": "High-value claim review",
+          "statement": "Claims of 5,000,000 VND or more are reviewed by a human adjuster who records a decision within 3 business days.",
+          "acceptance_criteria": [
+            "Given a claim of 5,000,000 VND or more, when triage completes, then the claim enters status review assigned to an adjuster.",
+            "Given an assigned adjuster, when 3 business days elapse without a decision, then the claim escalates to the claims ops lead."
+          ],
+          "source_claim_ids": [
+            "W8"
+          ]
+        }
+      ]
+    }
+  },
+  "events": [
+    {
+      "seq": 1,
+      "type": "lifecycle",
+      "state": "draft",
+      "note": "loaded 5 evidence sources + draft spec"
+    },
+    {
+      "seq": 2,
+      "type": "stage_done",
+      "stage": "wiki",
+      "claims": 13
+    },
+    {
+      "seq": 3,
+      "type": "stage_done",
+      "stage": "conflicts",
+      "conflicts": 2
+    },
+    {
+      "seq": 4,
+      "type": "gate",
+      "errors": 5,
+      "warnings": 1,
+      "verdict": "blocking"
+    },
+    {
+      "seq": 5,
+      "type": "lifecycle",
+      "state": "graded",
+      "note": "round 1 of 3"
+    },
+    {
+      "seq": 6,
+      "type": "grade",
+      "round": 1,
+      "overall": 61,
+      "verdict": "NEEDS_REVISION",
+      "p0": 1
+    },
+    {
+      "seq": 7,
+      "type": "debate_done",
+      "turns": 6,
+      "amendments": 5
+    },
+    {
+      "seq": 8,
+      "type": "amendments_applied",
+      "count": 5,
+      "new_requirements": 1
+    },
+    {
+      "seq": 9,
+      "type": "lifecycle",
+      "state": "graded",
+      "note": "round 2 of 3 (post-debate re-grade)"
+    },
+    {
+      "seq": 10,
+      "type": "grade",
+      "round": 2,
+      "overall": 92,
+      "verdict": "SATISFIED_WITH_DEFERRED",
+      "p0": 0
+    },
+    {
+      "seq": 11,
+      "type": "lifecycle",
+      "state": "advisor",
+      "note": ""
+    },
+    {
+      "seq": 12,
+      "type": "advisor",
+      "verdict": "MINOR_POLISH",
+      "s0": 0
+    },
+    {
+      "seq": 13,
+      "type": "lifecycle",
+      "state": "sign-off",
+      "note": "awaiting human"
+    }
+  ],
+  "lifecycle": [
+    {
+      "state": "draft",
+      "note": "loaded 5 evidence sources + draft spec"
+    },
+    {
+      "state": "graded",
+      "note": "round 1 of 3"
+    },
+    {
+      "state": "graded",
+      "note": "round 2 of 3 (post-debate re-grade)"
+    },
+    {
+      "state": "advisor",
+      "note": ""
+    },
+    {
+      "state": "sign-off",
+      "note": "awaiting human"
+    }
+  ],
+  "signoff": {
+    "status": "pending",
+    "by": null
+  }
+}

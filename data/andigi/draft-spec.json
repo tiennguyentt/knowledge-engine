@@ -1,0 +1,68 @@
+{
+  "feature_name": "AnDigi v1 — Claims FNOL & AI Triage",
+  "summary": "Customers file first-notice-of-loss in the app. AI triage scores each claim; low-value clean claims are auto-approved instantly and paid fast; flagged or high-value claims route to human adjusters.",
+  "out_of_scope": [
+    "Underwriting and policy issuance changes",
+    "Marketing-side claim status notifications beyond app push"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "title": "FNOL submission",
+      "statement": "The app lets a policyholder file a claim with photos, an incident description, and the incident date, creating a claim in status fnol.",
+      "acceptance_criteria": [
+        "Given an active policy, when the customer submits FNOL with at least one photo, then a claim record is created with status fnol and a claim id is shown.",
+        "Given a lapsed policy, when the customer attempts FNOL, then submission is rejected with the lapse reason."
+      ],
+      "source_claim_ids": ["W1"]
+    },
+    {
+      "id": "R2",
+      "title": "Instant auto-approval for low-value claims",
+      "statement": "Claims under 5,000,000 VND with a passing triage score and no fraud flag are auto-approved instantly, and the system should disburse the payout promptly after approval.",
+      "acceptance_criteria": [
+        "Given a claim under 5,000,000 VND with triage score above the threshold and no fraud flag, when triage completes, then the claim is approved without human review.",
+        "Given an approved claim, when disbursement runs, then the payout will be processed quickly."
+      ],
+      "source_claim_ids": ["W2"]
+    },
+    {
+      "id": "R3",
+      "title": "Periodic e-KYC re-verification",
+      "statement": "Per Circular 14/2026 on digital insurance distribution, customer e-KYC data must be re-verified every 90 days, and claims from customers with expired verification are held until re-verification completes.",
+      "acceptance_criteria": [
+        "Given a customer whose last e-KYC verification is older than 90 days, when they file a claim, then the claim is held in status review until re-verification completes."
+      ],
+      "source_claim_ids": []
+    },
+    {
+      "id": "R4",
+      "title": "Fraud flag routing",
+      "statement": "Any claim with a fraud flag routes to a human investigator; the AI never clears its own fraud flag, and the investigation record is retained for ten years.",
+      "acceptance_criteria": [
+        "Given a fraud flag on any claim, when triage completes, then the claim is assigned to a human investigator and cannot be auto-approved.",
+        "Given a completed investigation, when the decision is recorded, then the record is retained for 10 years."
+      ],
+      "source_claim_ids": ["W6", "W7"]
+    },
+    {
+      "id": "R5",
+      "title": "Triage session storage",
+      "statement": "Triage session tokens are stored in Redis with a 30-minute TTL to keep the FNOL flow stateless across app restarts.",
+      "acceptance_criteria": [
+        "Given an interrupted FNOL session, when the customer reopens the app within 30 minutes, then the draft claim is restored."
+      ],
+      "source_claim_ids": ["W1"]
+    },
+    {
+      "id": "R6",
+      "title": "High-value claim review",
+      "statement": "Claims of 5,000,000 VND or more are reviewed by a human adjuster who records a decision within 3 business days.",
+      "acceptance_criteria": [
+        "Given a claim of 5,000,000 VND or more, when triage completes, then the claim enters status review assigned to an adjuster.",
+        "Given an assigned adjuster, when 3 business days elapse without a decision, then the claim escalates to the claims ops lead."
+      ],
+      "source_claim_ids": ["W8"]
+    }
+  ]
+}

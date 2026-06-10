@@ -1,33 +1,55 @@
-"""The four LLM stages of the spec engine.
+"""Evidence and grading stages (v2 — red-team flow).
 
 Each stage is one structured call: prompt in, schema-validated object out.
 The truth hierarchy is injected wherever authority matters.
 """
 
 from engine.llm import LLM
-from engine.schemas import ConflictReport, GradeReport, SpecDraft, Wiki
+from engine.schemas import AdvisorReport, ConflictReport, DraftSpec, GradeReport, Wiki
 
 TRUTH_HIERARCHY = """\
-Truth hierarchy (highest authority first). When sources disagree, the higher
-level wins, and the conflict must still be flagged - never silently dropped:
-1. CTO decision           - explicit decisions stated by the CTO
+Truth hierarchy. Two categories of truth, never to be confused:
+
+BUSINESS RULES (what the system SHOULD do) - higher authority wins, conflicts
+must still be flagged, never silently dropped:
+1. CEO/CTO decision        - explicit decisions stated by the decision-maker
 2. Written policy/contract - signed documents and published policy
-3. Ops lead statement     - operational practice described by the ops lead
-4. Team anecdote          - individual recollections, support stories
+3. Ops statement           - operational practice described by leads
+4. Anecdote                - individual recollections, support stories
+
+ARTIFACT STATE (what the system CURRENTLY does) - code and database are
+absolute facts about current behavior; no spoken claim can override them.
+When intended behavior (business rule) and artifact state diverge, that gap
+is real and must surface as an explicit migration requirement.
+"""
+
+CLAIM_CLASSES = """\
+Every claim carries exactly one claim_class:
+- fact: verifiable statement traced to a source
+- decision: an authority chose this; traced to who and when
+- domain-assumption: plausible domain knowledge without a source in the corpus
+- regulatory-assumption: legal/regulatory statement NOT traced to a source in
+  the corpus - these are dangerous and must be flagged for verification
+- recommendation: an agent's suggestion, not ground truth
+- artifact-state: extracted from code or database; absolute for current behavior
 """
 
 
-def build_wiki(llm: LLM, transcripts: dict[str, str]) -> Wiki:
+def build_wiki(llm: LLM, sources: dict[str, dict]) -> Wiki:
     corpus = "\n\n".join(
-        f"=== TRANSCRIPT: {name} ===\n{text}" for name, text in transcripts.items()
+        f"=== SOURCE: {name} (type: {meta['type']}) ===\n{meta['text']}"
+        for name, meta in sources.items()
     )
     return llm.complete_json(
         system=(
-            "You compile raw meeting transcripts into a source-traced project wiki. "
-            "Extract every atomic decision, constraint, and fact as a separate claim. "
-            "Each claim must carry a verbatim quote and its speaker - a claim without "
-            "a source does not exist. Assign each claim an authority level using the "
-            f"hierarchy below.\n\n{TRUTH_HIERARCHY}"
+            "You compile heterogeneous evidence (meeting transcripts, policy "
+            "documents, source code, database schemas) into a source-traced "
+            "project wiki. Extract every atomic decision, constraint, fact and "
+            "current-behavior observation as a separate claim. Each claim must "
+            "carry source_file, source_type, a locator (line/section/table) and "
+            "a verbatim quote or code snippet - a claim without a source does "
+            "not exist. Code and DB claims get authority 'Artifact state' and "
+            f"claim_class 'artifact-state'.\n\n{TRUTH_HIERARCHY}\n{CLAIM_CLASSES}"
         ),
         user=corpus,
         schema=Wiki,
@@ -37,47 +59,75 @@ def build_wiki(llm: LLM, transcripts: dict[str, str]) -> Wiki:
 def check_conflicts(llm: LLM, wiki: Wiki) -> ConflictReport:
     return llm.complete_json(
         system=(
-            "You are the conflict checker of a spec pipeline. Compare every pair of "
-            "wiki claims and report contradictions - direct or implied. Resolve each "
-            "conflict strictly by the truth hierarchy, name the winning claim, and "
-            "flag it for human confirmation when the losing source reflects current "
-            f"real-world practice.\n\n{TRUTH_HIERARCHY}"
+            "You are the conflict checker. Compare every pair of wiki claims "
+            "and report contradictions of BOTH kinds: 'business-rule' (spoken/"
+            "written intents disagree - resolve by the hierarchy, flag for "
+            "human confirmation when practice diverges from policy) and "
+            "'artifact-state-gap' (an intended behavior disagrees with what "
+            "code/DB currently does - the winning claim is the INTENDED "
+            "behavior, and the resolution must demand an explicit migration "
+            f"requirement).\n\n{TRUTH_HIERARCHY}"
         ),
         user=wiki.model_dump_json(indent=2),
         schema=ConflictReport,
     )
 
 
-def draft_spec(llm: LLM, wiki: Wiki, conflicts: ConflictReport) -> SpecDraft:
+GRADER_SYSTEM = """\
+You are the adversarial Grading Lead of a spec red team. Your job is to find
+problems, not to be agreeable. Grade the draft spec against the wiki (ground
+truth), the conflict report, and the deterministic gate results, on five
+dimensions, each as concrete checklist items with PASS/FAIL:
+
+D1 Direction Coverage: every source requirement/decision addressed; no silent
+   claim drops; conflict resolutions reflected.
+D2 Expert Translation: >=3 edge cases beyond sources; failure path per major
+   requirement; measurable success criteria.
+D3 Grounding Discipline: every domain fact traces to a claim id; no invented
+   numbers or SLAs; regulatory claims MUST trace to a source in the corpus or
+   be tagged as assumptions needing verification - an untraced regulatory
+   claim is always P0 with claim_class_violation 'regulatory-assumption
+   without source' and assigned_role 'compliance'.
+D4 Scope Discipline: explicit out-of-scope; no unplanned dependencies.
+D5 Dev-Readiness: testable ACs; explicit numbers; no hedge words; active voice.
+
+Each FAIL becomes a typed finding with priority (P0 blocks ship: grounding/
+compliance; P1: a dev would ask; P2: polish), an evidence_ref, a suggested_fix
+and the role best placed to argue it. Score each dimension 0-100, overall
+0-100. Verdict: SATISFIED (no findings), SATISFIED_WITH_DEFERRED (only P2),
+NEEDS_REVISION (any P0/P1). Gate errors always force NEEDS_REVISION.
+Report everything you find - a human filters later.
+"""
+
+
+def grade_spec(llm: LLM, wiki: Wiki, conflicts: ConflictReport, spec: DraftSpec, gate_dict: dict, round_no: int) -> GradeReport:
     return llm.complete_json(
-        system=(
-            "You draft engineering-ready functional specs. Every requirement must "
-            "trace to wiki claim ids, follow conflict resolutions exactly, use active "
-            "voice, and avoid vague quantities (no 'fast', 'some', 'user-friendly'). "
-            "Acceptance criteria are Given/When/Then and independently testable. "
-            "List explicit out-of-scope items so engineering asks zero follow-ups."
-        ),
+        system=GRADER_SYSTEM,
         user=(
-            f"WIKI:\n{wiki.model_dump_json(indent=2)}\n\n"
-            f"CONFLICT RESOLUTIONS:\n{conflicts.model_dump_json(indent=2)}"
+            f"GRADING ROUND: {round_no}\n\n"
+            f"WIKI (ground truth):\n{wiki.model_dump_json(indent=2)}\n\n"
+            f"CONFLICTS:\n{conflicts.model_dump_json(indent=2)}\n\n"
+            f"DETERMINISTIC GATE RESULT (code-enforced, cannot be overridden):\n{gate_dict}\n\n"
+            f"DRAFT SPEC TO GRADE:\n{spec.model_dump_json(indent=2)}"
         ),
-        schema=SpecDraft,
+        schema=GradeReport,
     )
 
 
-def grade_spec(llm: LLM, wiki: Wiki, spec: SpecDraft) -> GradeReport:
+def advise(llm: LLM, spec: DraftSpec, grade: GradeReport) -> AdvisorReport:
     return llm.complete_json(
         system=(
-            "You are an adversarial spec grader. Your job is to find problems, not "
-            "to be agreeable. Grade each requirement 0-5 on clarity, source coverage "
-            "(does every assertion trace to a real wiki claim?), and testability. "
-            "Report every issue you find, including low-severity ones - a human "
-            "reviewer filters them later. Verdict 'revise' whenever any dimension "
-            "scores 3 or below."
+            "You are a senior product advisor reviewing AFTER grading. You "
+            "never block - the human decides. Evaluate: framing altitude, "
+            "alternatives visibility, tradeoff surfacing, risk asymmetry "
+            "(compliance/revenue/trust risks elevated over polish), industry "
+            "pattern match, scope boundary clarity. Severity: S0 = reframe "
+            "recommended before ship, S1 = the owner should consider, S2 = "
+            "minor polish."
         ),
         user=(
-            f"WIKI (ground truth):\n{wiki.model_dump_json(indent=2)}\n\n"
-            f"SPEC TO GRADE:\n{spec.model_dump_json(indent=2)}"
+            f"SPEC (post-amendment):\n{spec.model_dump_json(indent=2)}\n\n"
+            f"GRADE: overall {grade.overall_score}, verdict {grade.verdict}"
         ),
-        schema=GradeReport,
+        schema=AdvisorReport,
     )
