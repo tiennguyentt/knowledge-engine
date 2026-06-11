@@ -26,7 +26,7 @@ def _body(app: AppTest) -> str:
 def test_default_view_is_the_chat_terminal(at):
     body = _body(at)
     assert "se-casebrief" in body  # the case brief explains the feature before play
-    assert "motorbike-insurance" in body
+    assert "digital insurance app" in body
     assert at.radio[0].options == WORKSPACES
 
 

@@ -571,7 +571,8 @@ def _strip_html(active: set, done: set, exec_html: str) -> str:
 CASE_BRIEF = (
     '<div class="se-casebrief">'
     '<div class="k">the case · synthetic</div>'
-    '<div class="t"><b>AnDigi</b> is a motorbike-insurance app. The feature being specced: '
+    '<div class="t"><b>AnDigi</b> is a digital insurance app; motorbike cover is one of its '
+    "product lines. The feature being specced, for motorbike claims: "
     '<b>file a claim in the app → AI triage → clean claims under 5,000,000 VND auto-approve '
     'and pay within 48h → fraud or high-value goes to a human adjuster</b>.</div>'
     '<div class="s">The draft spec of that feature has planted defects. This team red-teams it '
