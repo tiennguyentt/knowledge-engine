@@ -46,7 +46,7 @@ with st.sidebar:
 
     st.divider()
     st.header("Run live")
-    with st.expander("on your own evidence pack"):
+    with st.expander("on your own evidence pack", expanded=True):
         base_url = st.text_input("API base URL", value=DEFAULT_BASE_URL)
         api_key = st.text_input("API key", type="password", help="Never stored. OpenRouter keys start with sk-or-.")
         model = st.selectbox("Model", SUGGESTED_MODELS, accept_new_options=True)
