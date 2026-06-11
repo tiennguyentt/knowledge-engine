@@ -1014,10 +1014,32 @@ def render_live() -> None:
                 "processed in this session only")
 
     llm = LLM(api_key=api_key, model=model, base_url=base_url)
-    status_area = st.container()
-    stream_area = st.container()
+
+    # live run streams in the same chat-terminal layout as the replay
+    col_chat, col_rail = st.columns([2.6, 1.05], gap="large")
+    with col_rail:
+        st.markdown('<div class="se-rail-title">team</div>', unsafe_allow_html=True)
+        rail_ph = st.empty()
+        rail_ph.markdown(presence_rail_html(set(), set()), unsafe_allow_html=True)
+        st.markdown('<div class="se-rail-title" style="margin-top:14px">execution</div>', unsafe_allow_html=True)
+        odo_ph = st.empty()
+        st.markdown('<p class="se-trace" style="margin-top:10px">LIVE MODEL RUN · real tokens · '
+                    f'{esc(model)}</p>', unsafe_allow_html=True)
+    with col_chat:
+        st.markdown('<p class="se-sysmsg">— live run · the full roster is working on your evidence —</p>',
+                    unsafe_allow_html=True)
+        status_area = st.container()
+        stream_area = st.container()
+
     boxes: dict = {}
-    typing = {"ph": None, "buf": ""}
+    typing = {"ph": None, "buf": "", "chars": 0}
+    done_roles: set = set()
+
+    def _odo() -> None:
+        odo_ph.markdown(f'<div class="se-odo">tokens <b>{llm.usage.total:,}</b> · '
+                        f'budget <b>{(llm.token_budget or 0):,}</b></div>', unsafe_allow_html=True)
+
+    _odo()
 
     titles = {"wiki": "Evidence → wiki", "conflicts": "Conflict check", "gate": "Code gate",
               "grade": "Grading round 1", "debate": "Role debate", "regrade": "Re-grade", "advisor": "Advisor"}
@@ -1027,16 +1049,22 @@ def render_live() -> None:
             boxes[stage] = status_area.status(titles.get(stage, stage), state="running")
         elif stage in boxes:
             boxes[stage].update(label=f"{titles.get(stage, stage)} — done · {llm.usage.total:,} tokens burned", state="complete")
+        _odo()
 
     def on_event(ev: dict) -> None:
         if ev["type"] == "turn_start":
+            rail_ph.markdown(presence_rail_html({ev["role"]}, done_roles), unsafe_allow_html=True)
             typing["ph"] = stream_area.empty()
             typing["buf"] = f"**{team.role_label(ev['role'])}** is thinking…\n\n"
             typing["ph"].markdown(typing["buf"])
         elif ev["type"] == "turn" and typing["ph"] is not None:
             typing["ph"].markdown(turn_html(ev), unsafe_allow_html=True)
             typing["ph"] = None
+            done_roles.add(ev["role"])
+            rail_ph.markdown(presence_rail_html(set(), done_roles), unsafe_allow_html=True)
+            _odo()
         elif ev["type"] == "no_objection":
+            done_roles.add(ev["role"])
             stream_area.markdown(f'<div class="se-noobj">{esc(team.role_label(ev["role"]))} — no objection (0 tokens)</div>', unsafe_allow_html=True)
         elif ev["type"] == "router" and not ev.get("close_phase"):
             stream_area.markdown(f'<p class="se-trace">router → {esc(ev["focused_question"])}</p>', unsafe_allow_html=True)
@@ -1045,6 +1073,9 @@ def render_live() -> None:
         if typing["ph"] is not None:
             typing["buf"] += ch
             typing["ph"].markdown(typing["buf"] + "▌")
+            typing["chars"] += 1
+            if typing["chars"] % 24 == 0:
+                _odo()
 
     try:
         run = run_pipeline(llm, on_progress, on_event, on_text, evidence_dir=evidence_dir)
