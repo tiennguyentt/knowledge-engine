@@ -71,6 +71,10 @@ with st.sidebar:
         "app. Every defect shown was planted in the evidence pack — and "
         "caught by the machinery, not by hand."
     )
+    st.markdown(
+        "Built by **Tien Nguyen** — AI-native Product Manager · "
+        "[tiennguyentt.github.io](https://tiennguyentt.github.io/)"
+    )
 
 
 # ---------------------------------------------------------------- helpers
@@ -610,7 +614,7 @@ def render_chat(run: dict) -> None:
             for item in feed:
                 _render_feed_item(item)
 
-    prompt = st.chat_input("Nhập suy nghĩ của bạn vào cuộc debate… (your message carries top authority)")
+    prompt = st.chat_input("Type your thought into the debate… (your message carries top authority)")
     if prompt:
         _handle_human_message(run, prompt)
         st.rerun()

@@ -387,12 +387,20 @@ CHAT_CSS = """
   color: var(--ink); font-size: 14.5px; line-height: 1.65;
 }
 
-/* bottom input as a rounded pill */
+/* bottom input as a rounded pill — flatten Streamlit's nested baseweb
+   layers, whose own opaque background and border otherwise paint over the
+   pill border (border appears "under" the background) */
 [data-testid="stChatInput"] {
   border: 1px solid var(--line-strong); border-radius: 26px;
-  background: #131826;
+  background: #131826; overflow: hidden;
 }
 [data-testid="stChatInput"]:focus-within { border-color: var(--accent); }
+[data-testid="stChatInput"] > div,
+[data-testid="stChatInput"] [data-baseweb="textarea"],
+[data-testid="stChatInput"] [data-baseweb="base-input"] {
+  background: transparent !important; border: none !important;
+  box-shadow: none !important;
+}
 [data-testid="stChatInput"] textarea { background: transparent; }
 .se-sysmsg { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--dim); margin: 10px 0; }
 
