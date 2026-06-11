@@ -54,7 +54,16 @@ h1, h2, h3 { font-family: 'IBM Plex Sans', sans-serif !important; letter-spacing
 
 [data-testid="stSidebar"] {
   background: var(--surface); border-right: 1px solid var(--line);
+  min-width: 270px; max-width: 340px;
 }
+/* narrow window: keep the sidebar a fixed sliver so the chat never gets pushed off-screen */
+@media (max-width: 860px) {
+  [data-testid="stSidebar"] { width: 270px !important; min-width: 270px !important; }
+}
+/* the pinned bottom input strip: solid app background, never wider than the view */
+[data-testid="stBottom"], [data-testid="stBottom"] > div { background: var(--bg); }
+[data-testid="stBottomBlockContainer"] { max-width: 1120px; }
+[data-testid="stChatInput"] { max-width: 100%; }
 [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
   font-family: 'JetBrains Mono', monospace !important; font-size: 11.5px !important;
   text-transform: uppercase; letter-spacing: .16em; color: var(--accent) !important;
