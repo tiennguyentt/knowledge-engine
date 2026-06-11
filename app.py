@@ -11,6 +11,7 @@ Live mode runs the real pipeline through any OpenAI-compatible endpoint
 """
 
 import json
+import re
 import time
 from pathlib import Path
 
@@ -504,6 +505,59 @@ def _reply_line(run: dict, role: str, refs: list | None) -> str:
     return ""
 
 
+_D_RUBRIC = {
+    "D1": "Direction coverage — every source requirement and decision addressed, none silently dropped",
+    "D2": "Expert translation — edge cases and failure paths beyond what sources literally said",
+    "D3": "Grounding discipline — every domain fact traces to a claim id; invented facts are P0",
+    "D4": "Scope discipline — explicit out-of-scope, no unplanned dependencies",
+    "D5": "Dev-readiness — testable ACs, explicit numbers, no hedge words, active voice",
+}
+
+_ACTIVE_REFS: dict[str, str] = {}
+_REF_RX = re.compile(r"\b([WCFR]\d+|G[1-8]|D[1-5]|JR-\d+)\b")
+
+
+def _ref_index(run: dict) -> dict[str, str]:
+    """id -> human tooltip: what W4/C1/F3/R2/G1 actually say, so nobody has to decode ids."""
+    s = run["stages"]
+    idx: dict[str, str] = dict(_D_RUBRIC)
+    for c in s.get("wiki", {}).get("claims", []):
+        src = (c.get("sources") or [{}])[0]
+        who = src.get("speaker") or src.get("source_file", "")
+        quote = (src.get("quote") or "")[:150]
+        idx[c["id"]] = f'{c["claim"]} — {who}: “{quote}”'
+    for c in s.get("conflicts", {}).get("conflicts", []):
+        idx[c["id"]] = f'conflict ({c["kind"]}): {c["description"][:220]}'
+    for rnd in ("grade_round1", "grade_round2"):
+        for f in s.get(rnd, {}).get("findings", []):
+            idx.setdefault(f["id"], f'finding {f["priority"]} · {f["dimension"]} on {f["requirement_id"]}: '
+                                    f'{f["description"][:220]}')
+    spec = s.get("corrected_spec") or {}
+    for r in spec.get("requirements", []):
+        idx[r["id"]] = f'requirement “{r["title"]}”: {r["statement"][:200]}'
+    for h in s.get("gate", {}).get("hits", []):
+        idx.setdefault(h["rule_id"], f'gate rule ({h["rule_class"]}): {h["message"][:180]}')
+    return idx
+
+
+def _set_refs(run: dict) -> None:
+    global _ACTIVE_REFS
+    try:
+        _ACTIVE_REFS = _ref_index(run)
+    except Exception:
+        _ACTIVE_REFS = {}
+
+
+def _linkify(escaped_text: str) -> str:
+    """Wrap W/C/F/R/G/D ids in hover chips whose tooltip is the underlying content."""
+    def sub(m: re.Match) -> str:
+        tip = _ACTIVE_REFS.get(m.group(1))
+        if not tip:
+            return m.group(1)
+        return f'<span class="se-ref" title="{esc(tip)}">{m.group(1)}</span>'
+    return _REF_RX.sub(sub, escaped_text)
+
+
 MACHINE_ROLES = {
     "wiki": ("Evidence Wiki", "#7C8CFF"),
     "conflicts": ("Conflict Check", "#F2A65A"),
@@ -512,8 +566,8 @@ MACHINE_ROLES = {
     "advisor": ("Advisor", "#3FB950"),
 }
 
-LEGEND = ("ids — W evidence claim · C conflict · G gate rule · F grader finding · "
-          "R requirement · D1–D5 grading rubric")
+LEGEND = ("hover any underlined id to read what it is — W evidence claim · C conflict · "
+          "G gate rule · F grader finding · R requirement · D1–D5 rubric")
 
 
 def _role_label(key: str) -> str:
@@ -530,24 +584,24 @@ def chat_msg_html(role_key: str, message: str, stance: str = "", cursor: bool = 
     color = _role_color(role_key)
     cur = " ▌" if cursor else ""
     stance_html = f' · {esc(stance)}' if stance else ""
-    reply_html = f'<div class="se-reply">{esc(reply)}</div>' if reply else ""
+    reply_html = f'<div class="se-reply">{_linkify(esc(reply))}</div>' if reply else ""
     body_cls = "tmsg se-think-live" if thinking else "tmsg"
     think = ""
     if work_notes:
         wn = work_notes
-        rows = f'<b>observation</b> {esc(wn.get("observation", ""))}<br>'
-        rows += (f'<b>evidence</b> {esc(", ".join(wn.get("evidence_refs") or []) or "—")} · '
+        rows = f'<b>observation</b> {_linkify(esc(wn.get("observation", "")))}<br>'
+        rows += (f'<b>evidence</b> {_linkify(esc(", ".join(wn.get("evidence_refs") or []) or "—"))} · '
                  f'<b>confidence</b> {esc(wn.get("confidence", ""))}<br>')
-        rows += f'<b>risk</b> {esc(wn.get("risk", ""))}'
+        rows += f'<b>risk</b> {_linkify(esc(wn.get("risk", "")))}'
         if wn.get("proposed_change"):
-            rows += f'<br><b>proposed</b> {esc(wn["proposed_change"])}'
+            rows += f'<br><b>proposed</b> {_linkify(esc(wn["proposed_change"]))}'
         if wn.get("open_assumption"):
-            rows += f'<br><b>open assumption</b> {esc(wn["open_assumption"])}'
+            rows += f'<br><b>open assumption</b> {_linkify(esc(wn["open_assumption"]))}'
         think = (f'<details class="se-think"><summary>thinking — how {esc(label)} got here</summary>'
                  f'<div class="tbody">{rows}</div></details>')
     return (f'<div class="se-gmsg"><div class="who" style="--c:{color};color:{color}">{esc(label)}'
             f'<span class="st">{stance_html}</span></div>'
-            f'{reply_html}<div class="{body_cls}">{esc(message)}{cur}</div>{think}</div>')
+            f'{reply_html}<div class="{body_cls}">{_linkify(esc(message))}{cur}</div>{think}</div>')
 
 
 def _exec_text(run: dict, tokens: int | None = None) -> str:
@@ -583,6 +637,7 @@ CASE_BRIEF = (
 
 
 def render_chat(run: dict) -> None:
+    _set_refs(run)
     feed = st.session_state.setdefault("chat_feed", [])
     _, col, _ = st.columns([1, 10, 1], gap="small")
 
@@ -629,7 +684,7 @@ def _render_feed_item(item: dict) -> None:
         cast = f'<span class="cast">{esc(item["cast"])}</span>' if item.get("cast") else ""
         st.markdown(f'<div class="se-phasehead">{esc(item["text"])}{cast}</div>', unsafe_allow_html=True)
     elif kind == "router":
-        st.markdown(f'<div class="se-router"><b>router</b> → {esc(item["text"])}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="se-router"><b>router</b> → {_linkify(esc(item["text"]))}</div>', unsafe_allow_html=True)
     elif kind == "turn":
         st.markdown(chat_msg_html(item["role"], item["message"], item.get("stance", ""),
                                   reply=item.get("reply", ""), work_notes=item.get("work_notes")),
@@ -741,7 +796,7 @@ def _play_into_chat(run: dict, container, strip_ph, animate: bool) -> None:
                             unsafe_allow_html=True)
                 time.sleep(0.5)
             elif kind == "router":
-                st.markdown(f'<div class="se-router"><b>router</b> → {esc(item["text"])}</div>',
+                st.markdown(f'<div class="se-router"><b>router</b> → {_linkify(esc(item["text"]))}</div>',
                             unsafe_allow_html=True)
                 time.sleep(0.5)
             elif kind == "turn":

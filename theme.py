@@ -432,6 +432,13 @@ CHAT_CSS = """
 /* replying-to thread line */
 .se-reply { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #7C8CFF; margin: 0 0 4px; }
 
+/* evidence-id chips: hover to read the underlying claim/conflict/finding */
+.se-ref {
+  font-family: 'JetBrains Mono', monospace; font-size: .92em; color: var(--accent);
+  border-bottom: 1px dotted rgba(124,140,255,.6); cursor: help; white-space: nowrap;
+}
+.se-ref:hover { background: rgba(124,140,255,.12); border-bottom-style: solid; }
+
 /* visible thinking: live stream + collapsed work notes per message */
 .se-think-live { color: #8A94A6; font-style: italic; font-size: 13.5px; }
 .se-think { margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #6B7585; }
