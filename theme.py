@@ -352,12 +352,55 @@ CHAT_CSS = """
 .se-runbar .kind { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; border-radius: 999px; padding: 3px 10px; border: 1px solid; }
 .se-chatmsg { margin: 0 0 12px; }
 .se-chatmsg .who { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+
+/* Grok-style message row: round role avatar + content column */
+.se-msg { display: flex; gap: 12px; margin: 0 0 18px; max-width: 780px; animation: seUp .35s ease both; }
+.se-ava {
+  width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600;
+  color: var(--c, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--c, #7C8CFF) 55%, transparent);
+  background: color-mix(in srgb, var(--c, #7C8CFF) 12%, transparent);
+}
+.se-msgbody { min-width: 0; flex: 1; }
+.se-msg .who { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }
+.se-msg .tmsg { color: #C3CAD6; font-size: 14.5px; line-height: 1.68; }
+@media (prefers-reduced-motion: reduce) { .se-msg { animation: none; } }
 .se-human {
   border: 1px solid rgba(124,140,255,.5); background: rgba(124,140,255,.08);
   border-radius: 12px 0 12px 12px; padding: 14px 16px; margin: 0 0 12px 18%;
   color: var(--ink); font-size: 14.5px; line-height: 1.65;
 }
 .se-sysmsg { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--dim); margin: 10px 0; }
+
+/* phase divider: a real room change, not another dim line */
+.se-phasehead {
+  display: flex; align-items: center; gap: 12px; margin: 26px 0 14px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: #A3B3FF;
+}
+.se-phasehead::before, .se-phasehead::after { content: ''; flex: 1; border-top: 1px solid var(--line-strong); }
+.se-phasehead .cast { color: var(--dim); letter-spacing: .04em; text-transform: none; }
+
+/* router asks become compact prompts, not body text */
+.se-router {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim);
+  border-left: 2px dotted var(--line-strong); padding: 2px 0 2px 12px; margin: 4px 0 10px;
+}
+.se-router b { color: var(--muted); }
+
+/* replying-to thread line */
+.se-reply { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #7C8CFF; margin: 0 0 4px; }
+
+/* visible thinking: live stream + collapsed work notes per message */
+.se-think-live { color: #8A94A6; font-style: italic; font-size: 13.5px; }
+.se-think { margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #6B7585; }
+.se-think summary { cursor: pointer; color: #8A94A6; list-style: none; outline: none; }
+.se-think summary::-webkit-details-marker { display: none; }
+.se-think summary::before { content: '▸ '; color: var(--accent); }
+.se-think[open] summary::before { content: '▾ '; }
+.se-think .tbody { border-left: 1px solid #2A3242; margin: 6px 0 0 3px; padding: 4px 0 4px 12px; line-height: 1.7; }
 </style>
 """
 

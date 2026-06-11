@@ -482,14 +482,49 @@ def presence_rail_html(active: set, done: set) -> str:
     return f'<div class="se-rail-chips">{chips}</div>'
 
 
-def chat_msg_html(role_key: str, message: str, stance: str = "", cursor: bool = False) -> str:
+def _findings_by_id(run: dict) -> dict:
+    out: dict = {}
+    for rnd in ("grade_round1", "grade_round2"):
+        for f in run["stages"].get(rnd, {}).get("findings", []):
+            out.setdefault(f["id"], f)
+    return out
+
+
+def _reply_line(run: dict, role: str, refs: list | None) -> str:
+    """Thread marker: this turn answers a finding raised by another role."""
+    fmap = _findings_by_id(run)
+    for r in refs or []:
+        f = fmap.get(r)
+        if f and f.get("assigned_role") and f["assigned_role"] != role:
+            return f'↩ on {r} — raised by {team.role_label(f["assigned_role"])}'
+    return ""
+
+
+def chat_msg_html(role_key: str, message: str, stance: str = "", cursor: bool = False,
+                  reply: str = "", work_notes: dict | None = None, thinking: bool = False) -> str:
     label = team.role_label(role_key)
     color = team.role_color(role_key)
+    short = ROLE_SHORT.get(role_key, role_key[:3].upper())
     cur = " ▌" if cursor else ""
     stance_html = f' · {esc(stance)}' if stance else ""
-    return (f'<div class="se-chatmsg"><div class="who" style="color:{color}">{esc(label)}{stance_html}</div>'
-            f'<div class="se-turn" style="border-left-color:{color};margin:0">'
-            f'<div class="tmsg" style="margin-top:0">{esc(message)}{cur}</div></div></div>')
+    reply_html = f'<div class="se-reply">{esc(reply)}</div>' if reply else ""
+    body_cls = "tmsg se-think-live" if thinking else "tmsg"
+    think = ""
+    if work_notes:
+        wn = work_notes
+        rows = f'<b>observation</b> {esc(wn.get("observation", ""))}<br>'
+        rows += (f'<b>evidence</b> {esc(", ".join(wn.get("evidence_refs") or []) or "—")} · '
+                 f'<b>confidence</b> {esc(wn.get("confidence", ""))}<br>')
+        rows += f'<b>risk</b> {esc(wn.get("risk", ""))}'
+        if wn.get("proposed_change"):
+            rows += f'<br><b>proposed</b> {esc(wn["proposed_change"])}'
+        if wn.get("open_assumption"):
+            rows += f'<br><b>open assumption</b> {esc(wn["open_assumption"])}'
+        think = (f'<details class="se-think"><summary>thinking — how {esc(label)} got here</summary>'
+                 f'<div class="tbody">{rows}</div></details>')
+    return (f'<div class="se-msg"><div class="se-ava" style="--c:{color}">{esc(short)}</div>'
+            f'<div class="se-msgbody"><div class="who" style="color:{color}">{esc(label)}{stance_html}</div>'
+            f'{reply_html}<div class="{body_cls}">{esc(message)}{cur}</div>{think}</div></div>')
 
 
 def render_chat(run: dict) -> None:
@@ -549,10 +584,15 @@ def _render_feed_item(item: dict) -> None:
     kind = item["kind"]
     if kind == "system":
         st.markdown(f'<p class="se-sysmsg">— {esc(item["text"])} —</p>', unsafe_allow_html=True)
+    elif kind == "phase":
+        cast = f'<span class="cast">{esc(item["cast"])}</span>' if item.get("cast") else ""
+        st.markdown(f'<div class="se-phasehead">{esc(item["text"])}{cast}</div>', unsafe_allow_html=True)
     elif kind == "router":
-        st.markdown(f'<p class="se-sysmsg">ROUTER → {esc(item["text"])}</p>', unsafe_allow_html=True)
+        st.markdown(f'<div class="se-router"><b>router</b> → {esc(item["text"])}</div>', unsafe_allow_html=True)
     elif kind == "turn":
-        st.markdown(chat_msg_html(item["role"], item["message"], item.get("stance", "")), unsafe_allow_html=True)
+        st.markdown(chat_msg_html(item["role"], item["message"], item.get("stance", ""),
+                                  reply=item.get("reply", ""), work_notes=item.get("work_notes")),
+                    unsafe_allow_html=True)
     elif kind == "human":
         st.markdown(f'<div class="se-human"><div class="who" style="color:#A3B3FF;font-family:JetBrains Mono,monospace;'
                     f'font-size:11px;text-transform:uppercase;letter-spacing:.08em">You · authority: highest</div>'
@@ -582,32 +622,54 @@ def _play_into_chat(run: dict, container, rail_ph, odo_ph, animate: bool) -> Non
         _odo(0)
     with container:
         for phase in s["debate"]["phases"]:
-            feed.append({"kind": "system", "text": phase["title"]})
+            phase_roles = [ev["role"] for ev in phase["events"] if ev["type"] == "turn"]
+            cast = " · ".join(dict.fromkeys(team.role_label(r) for r in phase_roles))
+            feed.append({"kind": "phase", "text": phase["title"], "cast": cast})
             if animate:
-                st.markdown(f'<p class="se-sysmsg">— {esc(phase["title"])} —</p>', unsafe_allow_html=True)
+                # the room changes: everyone in this phase shows up as present
+                rail_ph.markdown(presence_rail_html(set(phase_roles), done), unsafe_allow_html=True)
+                st.markdown(f'<div class="se-phasehead">{esc(phase["title"])}'
+                            f'<span class="cast">{esc(cast)}</span></div>', unsafe_allow_html=True)
+                time.sleep(0.5)
             for ev in phase["events"]:
                 if ev["type"] == "router" and not ev.get("close_phase"):
                     feed.append({"kind": "router", "text": ev["focused_question"]})
                     if animate:
-                        st.markdown(f'<p class="se-sysmsg">ROUTER → {esc(ev["focused_question"])}</p>', unsafe_allow_html=True)
-                        time.sleep(0.6)
+                        st.markdown(f'<div class="se-router"><b>router</b> → {esc(ev["focused_question"])}</div>',
+                                    unsafe_allow_html=True)
+                        time.sleep(0.5)
                 elif ev["type"] == "turn":
+                    wn = ev.get("work_notes") or {}
+                    reply = _reply_line(run, ev["role"], ev.get("refs"))
                     if animate:
                         rail_ph.markdown(presence_rail_html({ev["role"]}, done), unsafe_allow_html=True)
                         ph = st.empty()
+                        # 1) visible thinking: the role's real work notes stream first, dim
+                        obs = wn.get("observation", "")
+                        if obs:
+                            tstep = max(4, len(obs) // 24)
+                            for i in range(0, len(obs), tstep):
+                                ph.markdown(chat_msg_html(ev["role"], obs[: i + tstep], "thinking…",
+                                                          cursor=True, thinking=True), unsafe_allow_html=True)
+                                time.sleep(0.022)
+                            time.sleep(0.35)
+                        # 2) the actual position replaces the thinking in place
                         msg = ev["message"]
                         step = max(3, len(msg) // 60)
                         for n, i in enumerate(range(0, len(msg), step)):
-                            ph.markdown(chat_msg_html(ev["role"], msg[: i + step], ev["stance"], cursor=True), unsafe_allow_html=True)
+                            ph.markdown(chat_msg_html(ev["role"], msg[: i + step], ev["stance"],
+                                                      cursor=True, reply=reply), unsafe_allow_html=True)
                             if n % 4 == 0:
                                 _odo(spent_chars + i)
                             time.sleep(0.03)
-                        ph.markdown(chat_msg_html(ev["role"], msg, ev["stance"]), unsafe_allow_html=True)
+                        ph.markdown(chat_msg_html(ev["role"], msg, ev["stance"], reply=reply,
+                                                  work_notes=wn), unsafe_allow_html=True)
                     spent_chars += len(ev["message"])
                     if animate:
                         _odo(spent_chars)
                     done.add(ev["role"])
-                    feed.append({"kind": "turn", "role": ev["role"], "message": ev["message"], "stance": ev["stance"]})
+                    feed.append({"kind": "turn", "role": ev["role"], "message": ev["message"],
+                                 "stance": ev["stance"], "reply": reply, "work_notes": wn})
         arb = s["debate"]["arbiter"]
         feed.append({"kind": "turn", "role": "arbiter",
                      "message": arb["summary"], "stance": "ruling"})
@@ -643,7 +705,9 @@ def _handle_human_message(run: dict, prompt: str) -> None:
                   f"HUMAN SAYS: {prompt}"),
             schema=TurnSchema,
         )
-        feed.append({"kind": "turn", "role": role, "message": turn.message, "stance": "answers you"})
+        wn = getattr(turn, "work_notes", None)
+        feed.append({"kind": "turn", "role": role, "message": turn.message, "stance": "answers you",
+                     "work_notes": wn.model_dump() if wn is not None else None})
         run["events"].append({"seq": len(run["events"]) + 1, "type": "role_answer", "role": role})
         sponsored.record_run(llm.usage.total)
     except Exception as err:
@@ -659,8 +723,12 @@ def render_run_bar(run: dict) -> str:
     kind = meta.get("kind", "run")
     kcolor = {"scripted-demo": "#F2A65A", "live": "#3FB950", "real-inference": "#3FB950"}.get(kind, "#9AA3B2")
     score = run["stages"]["grade_round2"]["overall_score"]
-    st.markdown(
-        f'<div class="se-runbar"><span class="idn"><b style="color:#E7EAF0">AnDigi</b> · claims red-team</span>'
+    c_back, c_bar = st.columns([0.6, 11], gap="small")
+    if c_back.button("←", help="Back to what this system solves", use_container_width=True):
+        st.session_state["view"] = "intro"
+        st.rerun()
+    c_bar.markdown(
+        f'<div class="se-runbar" style="margin-top:0"><span class="idn"><b style="color:#E7EAF0">AnDigi</b> · claims red-team</span>'
         f'<span class="kind" style="color:{kcolor};border-color:{kcolor}66">{esc(kind)}</span>'
         f'<span class="idn">11 agents · 5 phases · {score}/100</span>'
         f'<span class="idn" style="margin-left:auto">agents do the work · you sign off</span></div>',
@@ -1092,12 +1160,16 @@ def render_live() -> None:
     feed = [{"kind": "system", "text": f"LIVE MODEL RUN · {run['meta']['model']} · real tokens · full roster"
                                        + (" · your evidence pack" if byo else "")}]
     for phase in run["stages"]["debate"]["phases"]:
-        feed.append({"kind": "system", "text": phase["title"]})
+        cast = " · ".join(dict.fromkeys(
+            team.role_label(ev["role"]) for ev in phase["events"] if ev["type"] == "turn"))
+        feed.append({"kind": "phase", "text": phase["title"], "cast": cast})
         for ev in phase["events"]:
             if ev["type"] == "router" and not ev.get("close_phase"):
                 feed.append({"kind": "router", "text": ev["focused_question"]})
             elif ev["type"] == "turn":
-                feed.append({"kind": "turn", "role": ev["role"], "message": ev["message"], "stance": ev["stance"]})
+                feed.append({"kind": "turn", "role": ev["role"], "message": ev["message"],
+                             "stance": ev["stance"], "work_notes": ev.get("work_notes") or {},
+                             "reply": _reply_line(run, ev["role"], ev.get("refs"))})
     feed.append({"kind": "turn", "role": "arbiter", "message": run["stages"]["debate"]["arbiter"]["summary"], "stance": "ruling"})
     st.session_state["chat_feed"] = feed
     st.session_state["active_run"] = run
