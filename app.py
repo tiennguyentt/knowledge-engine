@@ -195,22 +195,6 @@ def _reasoning_steps(run: dict) -> list[dict]:
     return steps
 
 
-def _reason_gen(turns: list[dict]):
-    """Stream the recorded reasoning word-by-word so it reads as the model
-    thinking in real time, a fast replay of the real run (not live inference)."""
-    for t in turns:
-        yield f"\n\n**{team.role_label(t['role'])}** · _{t.get('stance', '')}_\n\n"
-        for w in (t.get("message", "") or "").split():
-            yield w + " "
-            time.sleep(0.012)
-        wn = t.get("work_notes") or {}
-        if wn:
-            yield (f"\n\n> **observed** {wn.get('observation', '')}  \n"
-                   f"> **evidence** {', '.join(wn.get('evidence_refs', []))} · "
-                   f"**risk** {wn.get('risk', '')}\n")
-            time.sleep(0.18)
-
-
 # ---------------------------------------------------------------- hero
 def render_hero(run: dict) -> None:
     s = run["stages"]
@@ -226,7 +210,7 @@ def render_hero(run: dict) -> None:
     # ~5-min path and lives at the very bottom, it never gates the experience.
     st.markdown(theme.telemetry(run["meta"]), unsafe_allow_html=True)
     st.markdown(
-        '<div class="se-flow-cap">This insurance spec looked approved. A real model caught the defects.</div>',
+        '<div class="se-flow-cap">Approved on paper. The model found the defects anyway, each with its receipt.</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -246,22 +230,6 @@ def render_hero(run: dict) -> None:
     steps = _reasoning_steps(run)
     if steps:
         st.markdown(theme.reasoning_trace(steps, run["meta"].get("model", "")), unsafe_allow_html=True)
-    # SHOW, don't tell: the model's OWN verbatim reasoning streams once on first
-    # landing (a fast replay of the real run), so a cold viewer SEES it think
-    # instead of reading about it. Guarded so it streams once, not on every rerun;
-    # afterwards it lives in a collapsed drawer, reachable for a re-read on mobile.
-    turns = s["debate"]["turns"]
-    if turns:
-        seen_key = f"_reasoned_{st.session_state.get('active_run_name', '')}"
-        if not st.session_state.get(seen_key):
-            st.write_stream(_reason_gen(turns))
-            st.session_state[seen_key] = True
-        with st.expander(f"the model's reasoning, verbatim · {len(turns)} agent turns + work-notes",
-                         expanded=False, icon=":material/forum:"):
-            for _t in turns:
-                st.markdown(turn_html(_t, show_notes=True), unsafe_allow_html=True)
-
-
     # Catch titles are DATA-DRIVEN, derived from the run itself, so this view
     # works on any run (curated replay or a messy real-model run), not just the
     # scripted case. Generic section frames; the card copy comes from the data.
@@ -401,6 +369,18 @@ def render_hero(run: dict) -> None:
                         "data/evals/andigi-ground-truth.json · scorer: engine/evals.py · pure code, no model</div>",
                         unsafe_allow_html=True)
 
+    # ---- the model's reasoning, verbatim --------------------------------------
+    # The real debate turns + work-notes, always visible (not a buried drawer) but
+    # height-capped so it reads as a live log on mobile, never an endless wall of
+    # text. The animated trace up top is the summary; this is the full argument.
+    turns = s["debate"]["turns"]
+    if turns:
+        st.write("")
+        theme.section("the reasoning", "The model's debate, verbatim", f"{len(turns)} agent turns + work-notes")
+        with st.container(height=360):
+            for _t in turns:
+                st.markdown(turn_html(_t, show_notes=True), unsafe_allow_html=True)
+
     # ---- depth ----------------------------------------------------------------
     st.write("")
     theme.section("depth", "For the technical reviewer", "")
@@ -448,14 +428,13 @@ def render_hero(run: dict) -> None:
     if sponsored.available():
         _left = sponsored.remaining_runs()
         st.write("")
-        theme.section("optional", "Run a fresh one live, yourself", "~5 min · no key")
-        with st.expander(f"Start a live run on a real model  ({_left} free today)", expanded=False, icon=":material/play_arrow:"):
-            st.caption("Optional and slow. Everything above is already a **real recorded run** that loaded "
-                       "instantly, this just streams a brand-new one end-to-end (~5 min, uses OpenRouter "
-                       "credits, Stop anytime). Picking a model only affects the run you start here.")
+        theme.section("optional", "Run one live yourself", "~5 min · no key")
+        with st.expander(f"Start a live run  ({_left} free today)", expanded=False, icon=":material/play_arrow:"):
+            st.caption("Everything above is already a **real recorded run**. This streams a brand-new one "
+                       "end to end. Pick a model, Stop anytime.")
             st.selectbox("Model", SPON_MODELS, key="spon_model", accept_new_options=True,
                          help="deepseek-chat is fastest; Kimi is a good alt; V4 is stronger but slower. Type any OpenRouter id.")
-            if st.button(":material/play_arrow: Start the ~5-min live run", key="hero_live",
+            if st.button(":material/play_arrow: Start the live run", key="hero_live",
                          disabled=_left <= 0, use_container_width=True):
                 st.session_state["_trigger_sponsored"] = True
                 st.rerun()
