@@ -114,8 +114,8 @@ def render() -> None:
             'align-items:baseline;font-family:JetBrains Mono,monospace;margin-top:10px">'
             '<span style="font-size:21px;color:#ECEAE3">'
             f'<span style="color:#6A6962;font-size:12px">readiness </span>{g1} '
-            f'<span style="color:#2E2D27">→</span> <b style="color:#5DB07C">{g2}</b> '
-            f'<span style="color:#5DB07C;font-size:13px">+{delta}</span></span>'
+            f'<span style="color:#2E2D27">→</span> <b style="color:#8E9A92">{g2}</b> '
+            f'<span style="color:#8E9A92;font-size:13px">+{delta}</span></span>'
             f'<span style="color:#9C9A92;font-size:13px"><b style="color:#ECEAE3">{defects}</b> '
             'defects caught — with receipts</span>'
             f'<span style="color:#9C9A92;font-size:13px"><b style="color:#ECEAE3">{gate_err}</b> '
@@ -136,7 +136,7 @@ def render() -> None:
                 f'<div class="rowtop"><span class="se-id">{theme.esc(p["id"])}</span>'
                 f'<span class="se-topic">{theme.esc(p["pain"])}</span></div>'
                 f'<div class="se-body" style="margin-top:10px">'
-                f'<span style="color:#5DB07C;font-family:JetBrains Mono,monospace;font-size:11px">+ </span>'
+                f'<span style="color:#8E9A92;font-family:JetBrains Mono,monospace;font-size:11px">+ </span>'
                 f"{theme.esc(p['answer'])}</div>"
                 f'<div class="se-trace">on screen: {theme.esc(p["proof"])}</div>'
             )
