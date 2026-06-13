@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0A0B0D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knowledge Engine">
+<title>Knowledge Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-25..0&display=block" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0B0D;--surface:#0F1113;--raised:#15171B;--ink:#ECEAE3;--muted:#9C9A92;--dim:#6A6962;
+  --accent:#D6A03C;--line:rgba(236,234,227,.08);--line2:rgba(236,234,227,.16);--add:#8E9A92;--del:#C0685C;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:'Schibsted Grotesk',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{display:flex;flex-direction:column;min-height:100dvh}
+.ms{font-family:'Material Symbols Rounded';font-style:normal;line-height:1;vertical-align:-.2em;font-size:1.1em}
+/* film grain + top glow */
+body::before{content:"";position:fixed;inset:-30% -20% auto -20%;height:60%;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 32% 0%,rgba(214,160,60,.08),transparent 62%)}
+body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---- app shell ---- */
+header.appbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;background:rgba(10,11,13,.82);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.appbar .brand{font-weight:700;letter-spacing:-.02em;font-size:16px}
+.appbar .chip{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.appbar .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.4s steps(1) infinite}
+main{position:relative;z-index:1;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 120px}
+footer.actionbar{position:sticky;bottom:0;z-index:5;padding:12px 16px calc(env(safe-area-inset-bottom) + 14px);
+  background:rgba(10,11,13,.9);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;gap:10px}
+.btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border-radius:13px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;text-decoration:none;font-weight:500;border:1px solid var(--line2)}
+.btn.primary{background:var(--accent);color:#0A0B0D;border-color:var(--accent);font-weight:600}
+.btn.ghost{color:var(--muted);background:transparent}
+
+/* ---- blocks ---- */
+@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0}}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+section{animation:up .5s ease both}
+.kicker{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:2px 0 12px}
+.kicker::before{content:'+ ';color:var(--add)}
+.tele{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--muted);border:1px solid var(--line);background:rgba(15,17,19,.6);border-radius:10px;padding:9px 13px;margin-bottom:16px}
+.tele .lbl{color:var(--dim);text-transform:uppercase;letter-spacing:.14em;font-size:9px}
+.tele b{color:var(--ink)} .tele .gold{color:var(--accent)} .tele .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.4s steps(1) infinite}
+
+.hero .delta-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.hero .score{font-weight:760;letter-spacing:-.03em;font-size:clamp(40px,16vw,64px);line-height:1}
+.hero .score .from{color:var(--dim);font-weight:600;font-size:.5em} .hero .score b{color:var(--ink)}
+.hero .score .delta{color:var(--accent);font-size:.4em;font-weight:700}
+.hero .score-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.pill{display:inline-block;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;
+  border:1px solid var(--del);color:var(--del);border-radius:999px;padding:5px 13px;text-transform:uppercase}
+.hero .sub{color:var(--muted);font-size:14px;line-height:1.6;margin-top:14px;max-width:60ch}
+.hero .sub b{color:var(--ink)}
+
+h2.sec{font-weight:700;letter-spacing:-.02em;font-size:21px;margin:34px 0 14px;border-top:1px solid var(--line2);padding-top:22px}
+
+.reason{border:1px solid var(--line2);border-left:2px solid var(--accent);background:linear-gradient(180deg,var(--raised),var(--surface));
+  border-radius:0 12px 12px 12px;padding:15px 15px 13px;margin-top:18px;font-family:'JetBrains Mono',monospace}
+.reason .rhead{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.reason .rhead .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:blink 1.4s steps(1) infinite}
+.rstep{display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--muted);line-height:1.5;padding:5px 0;opacity:0;animation:up .45s cubic-bezier(.16,1,.3,1) both}
+.rstep .m{flex:0 0 auto;margin-top:1px;font-size:14px}
+.rstep.warn .m{color:var(--del)} .rstep.warn{color:#D8B0AB}
+.rstep.fix{color:var(--ink)} .rstep.fix .m{color:var(--accent)}
+.rstep .m{color:var(--dim)}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px}
+.stat{border:1px solid var(--line);background:rgba(15,17,19,.55);border-radius:12px;padding:13px 14px}
+.stat .v{font-weight:700;font-size:24px;letter-spacing:-.02em}
+.stat .v .from{color:var(--dim);font-size:.66em;font-weight:600}
+.stat .l{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+details.catch{border:1px solid var(--line2);border-left:3px solid var(--del);background:linear-gradient(180deg,var(--raised),var(--surface));
+  border-radius:0 12px 12px 12px;padding:0;margin:0 0 12px;overflow:hidden}
+details.catch summary{list-style:none;cursor:pointer;padding:16px 16px;display:flex;flex-direction:column;gap:9px}
+details.catch summary::-webkit-details-marker{display:none}
+.catch .crow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.catch .cnum{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--del);font-weight:600}
+.catch .ctag{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-left:auto}
+.catch .ctitle{font-size:15px;font-weight:600;line-height:1.4;color:var(--ink)}
+.catch .chip-human{align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 10px}
+.catch .reveal{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:5px}
+.catch[open] .reveal .ms{transform:rotate(90deg)}
+.catch .body{padding:0 16px 16px;border-top:1px solid var(--line)}
+.quote{font-family:'JetBrains Mono',monospace;font-size:12px;color:#8E8C82;border-left:2px solid var(--line2);padding:7px 0 7px 13px;margin-top:12px;line-height:1.6}
+.quote .who{display:block;color:var(--dim);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+.resolve{font-size:13px;color:#CDCAC0;line-height:1.6;margin-top:12px}
+.resolve::before{content:'→ ';color:var(--accent)}
+
+/* how it runs — vertical pipeline */
+.flow{display:flex;flex-direction:column;gap:0;margin-top:10px}
+.fnode{border:1px solid var(--line2);border-radius:12px;background:linear-gradient(180deg,var(--raised),var(--surface));padding:13px 15px}
+.fnode.gate{border-color:rgba(214,160,60,.5)} .fnode.gate .ft,.fnode.gate .fk{color:var(--accent)}
+.fnode.out{border-color:rgba(142,154,146,.45)} .fnode.out .ft{color:var(--add)}
+.fnode .fk{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.fnode .ft{font-weight:600;font-size:16px;margin-top:6px}
+.fnode .fs{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px}
+.farrow{text-align:center;color:var(--dim);font-size:13px;padding:5px 0}
+.foot{color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.7;margin-top:26px;text-align:center}
+@media (prefers-reduced-motion:reduce){.rstep,section{animation:none;opacity:1}}
+</style>
+</head>
+<body>
+<header class="appbar">
+  <div class="brand">Knowledge&nbsp;Engine</div>
+  <div class="chip" id="appchip"></div>
+</header>
+<main id="app"></main>
+<footer class="actionbar">
+  <a class="btn primary" id="livebtn"><span class="ms">bolt</span> Watch it run live</a>
+  <a class="btn ghost" id="auditbtn"><span class="ms">fact_check</span> Audit</a>
+</footer>
+<script id="run-data" type="application/json">{"telemetry": {"model": "deepseek/deepseek-chat", "tin": 50560, "tout": 8028, "dur": 345.4, "trace": "4e4d9d1"}, "stats": {"g1": 30, "g2": 68, "delta": 38, "gate1": 5, "gate2": 1, "humans": 2, "verdict": "needs revision", "caught": 8, "total": 10}, "reasoning": [{"k": "scan", "t": "scanning 5 evidence sources — transcripts · policy · code · DB"}, {"k": "ground", "t": "grounding W1 ← Section 5.1: “Approved claims are paid within 48 hours of the approval de…”"}, {"k": "conflict", "t": "Written policy states approved claims are paid within 48 hours, but code sets PAYOUT_SLA_HOURS to 120 (5 days)."}, {"k": "gate", "t": "code gate — G7 missing-provenance: requirement traces to zero claims"}, {"k": "debate", "t": "ba: Conflict C1 resolution requires updating R2 to enforce W1's 48hr payout SLA. Current draft retains ops practice (W2) wi…"}, {"k": "resolve", "t": "resolved — Written policy wins · Update PAYOUT_SLA_HOURS in code to 48 to align with policy, ensuring migration…"}, {"k": "fix", "t": "corrected — “Claims under 5,000,000 VND with a passing triage score and no fraud flag are auto-approved instantly, a…”"}], "catches": [{"tag": "truth-hierarchy", "id": "C1", "title": "Written policy states approved claims are paid within 48 hours, but ops statement indicates a five-day turnaround.", "human": true, "receipt": [{"who": "Written policy", "src": "policy-claims-handling.md · Section 5.1", "quote": "Approved claims are paid within 48 hours of the approval decision."}, {"who": "Ops statement", "src": "transcript-02-claims-ops.md · ", "quote": "On payout speed: the team currently works to roughly a five-day turnaround after approval."}], "resolution": "Update operational practices to align with written policy or revise policy to reflect actual practices."}, {"tag": "P0 · grounding", "id": "F2", "title": "R3 makes untraced regulatory claim about 90-day e-KYC re-verification", "human": false, "receipt": [], "resolution": "Trace R3 to a source claim or tag as [needs-compliance-input]"}, {"tag": "artifact-state gap", "id": "C2", "title": "Written policy states approved claims are paid within 48 hours, but code sets PAYOUT_SLA_HOURS to 120 (5 days).", "human": false, "receipt": [{"who": "Written policy", "src": "policy-claims-handling.md · Section 5.1", "quote": "Approved claims are paid within 48 hours of the approval decision."}, {"who": "Artifact state", "src": "code-claims-sla.py.txt · ", "quote": "PAYOUT_SLA_HOURS = 120  # 5 days from approval to disbursement"}], "resolution": "Update PAYOUT_SLA_HOURS in code to 48 to align with policy, ensuring migration to handle existing claims."}], "live_url": "https://knowledge-engine.streamlit.app"}</script>
+<script>
+const RUN = JSON.parse(document.getElementById('run-data').textContent);
+const E=(t,p)=>{const e=document.createElement(t);Object.assign(e,p||{});return e};
+const n=x=>x.toLocaleString();
+const RICON={scan:'search',ground:'link',conflict:'warning',gate:'gavel',debate:'forum',resolve:'balance',fix:'check'};
+
+// app bar chip
+document.getElementById('appchip').innerHTML =
+  `<span class="dot"></span>${RUN.telemetry.model.split('/').pop()} · ${RUN.telemetry.trace}`;
+document.getElementById('livebtn').href = RUN.live_url;
+document.getElementById('auditbtn').onclick = ()=>{document.querySelector('details.catch')?.setAttribute('open','');document.getElementById('catches')?.scrollIntoView({behavior:'smooth'});return false};
+
+const t=RUN.telemetry, st=RUN.stats;
+let h='';
+h+=`<div class="kicker">Evidence-backed spec red team · AnDigi insurance (synthetic)</div>`;
+h+=`<div class="tele"><span class="dot"></span><span class="lbl">real inference</span>`+
+   `<b class="gold">${t.model}</b><span>·</span><span><b>${n(t.tin)}</b> in / <b>${n(t.tout)}</b> out</span>`+
+   `<span>·</span><span><b>${t.dur}</b>s</span><span>·</span><span>trace <b>${t.trace}</b></span></div>`;
+// verdict hero
+h+=`<section class="hero"><div class="delta-row"><div class="score"><span class="from">${st.g1} →</span> <b>${st.g2}</b> <span class="delta">+${st.delta}</span></div></div>`+
+   `<div class="score-label">spec readiness</div><span class="pill">${st.verdict}</span>`+
+   `<div class="sub">`+ (st.caught!=null?`<b>${st.caught}/${st.total}</b> planted defects caught · `:``) +
+   `gate errors <b>${st.gate1}→${st.gate2}</b> · <b>${st.humans}</b> decision${st.humans!=1?'s':''} only a human can make.</div></section>`;
+// reasoning trace
+h+=`<section class="reason"><div class="rhead"><span class="dot"></span>live reasoning · replayed from the ${t.model.split('/').pop()} run</div>`;
+RUN.reasoning.forEach((s,i)=>{const cls='rstep'+(s.k==='conflict'?' warn':'')+(s.k==='fix'?' fix':'');
+  h+=`<div class="${cls}" style="animation-delay:${(i*0.5).toFixed(2)}s"><span class="ms m">${RICON[s.k]||'chevron_right'}</span><span>${s.t}</span></div>`});
+h+=`</section>`;
+// stats grid
+h+=`<div class="grid">`+
+   `<div class="stat"><div class="v"><span class="from">${st.g1}→</span>${st.g2}</div><div class="l">spec readiness</div></div>`+
+   (st.caught!=null?`<div class="stat"><div class="v">${st.caught}/${st.total}</div><div class="l">defects caught</div></div>`:``)+
+   `<div class="stat"><div class="v"><span class="from">${st.gate1}→</span>${st.gate2}</div><div class="l">gate errors (code)</div></div>`+
+   `<div class="stat"><div class="v">${st.humans}</div><div class="l">human decisions</div></div>`+
+   `</div>`;
+// catches
+h+=`<h2 class="sec" id="catches">The catches</h2>`;
+RUN.catches.forEach(c=>{
+  h+=`<details class="catch"><summary><div class="crow"><span class="cnum">${c.id}</span><span class="ctag">${c.tag}</span></div>`+
+     `<div class="ctitle">${c.title}</div>`+
+     (c.human?`<span class="chip-human"><span class="ms" style="font-size:13px">flag</span> human decision</span>`:``)+
+     `<div class="reveal"><span class="ms" style="font-size:14px">chevron_right</span> tap for the receipt</div></summary>`+
+     `<div class="body">`;
+  c.receipt.forEach(r=>{h+=`<div class="quote"><span class="who">${r.who} · ${r.src}</span>“${r.quote}”</div>`});
+  if(c.resolution) h+=`<div class="resolve">${c.resolution}</div>`;
+  h+=`</div></details>`;
+});
+// how it runs
+h+=`<h2 class="sec">How it runs</h2><div class="flow">`;
+const NODES=[['','evidence','Messy in','transcripts · policy · code · DB'],
+['','trace','Source-traced','every claim → a receipt'],
+['gate','code gate','Un-gameable','models can’t override'],
+['','11 agents','Red-team debate','adversarial · graded'],
+['out','verified','Signed spec',`${st.g1} → ${st.g2}`]];
+NODES.forEach((nd,i)=>{h+=`<div class="fnode ${nd[0]}"><div class="fk">${nd[1]}</div><div class="ft">${nd[2]}</div><div class="fs">${nd[3]}</div></div>`+
+  (i<NODES.length-1?`<div class="farrow">↓</div>`:``)});
+h+=`</div>`;
+h+=`<div class="foot">recorded real run · all data synthetic · the engine guarantees (gate · grounding · human sign-off) live outside the model<br>Knowledge Engine — Tiên Nguyễn</div>`;
+document.getElementById('app').innerHTML=h;
+</script>
+</body>
+</html>
