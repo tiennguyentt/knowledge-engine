@@ -31,7 +31,8 @@ def test_default_view_is_the_overview(at):
     assert at.radio[0].value == "Overview"
     assert "se-countup" in body  # the readiness delta animates in the hero
     assert "spec readiness" in body
-    assert "real inference" in body  # telemetry strip proves the default is a real run
+    assert "recorded run" in body  # telemetry labels the default honestly (no unverifiable "real" claim)
+    assert "trace" in body          # checkable metadata (model · tokens · content-hash trace)
     assert "live reasoning" in body  # the model's actual logic chain is replayed, not just wording
 
 

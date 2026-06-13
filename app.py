@@ -210,9 +210,10 @@ def render_hero(run: dict) -> None:
     # ~5-min path and lives at the very bottom — it never gates the experience.
     st.markdown(theme.telemetry(run["meta"]), unsafe_allow_html=True)
     st.markdown(
-        '<div class="se-flow-cap">A real model caught the defects in an “approved” insurance spec.</div>'
-        '<p class="se-hero-sub">A recorded <b>real model run</b> — the telemetry above is genuine and it '
-        "loads instantly, no waiting. Watch the reasoning replay below; tap any catch for its receipt.</p>",
+        '<div class="se-flow-cap">An “approved” insurance spec — and the defects hiding in it.</div>'
+        '<p class="se-hero-sub">A recorded model run, shown instantly (no waiting). '
+        "Don't take the label's word — <b>⬇ download the raw run</b> (top) to inspect every model call, "
+        "prompt and token, or run your own live (bottom). Below: how it reasoned, with receipts.</p>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -1003,11 +1004,11 @@ def render_run_bar(run: dict) -> str:
         unsafe_allow_html=True,
     )
     c_dl.download_button(
-        ":material/download: replay", data=json.dumps(run, indent=2, ensure_ascii=False),
+        ":material/download: raw run", data=json.dumps(run, indent=2, ensure_ascii=False),
         file_name=f"knowledge-engine-{kind}.json", mime="application/json",
         use_container_width=True,
-        help="Download this run as a self-contained JSON bundle — replayable and "
-             "diffable anywhere, no engine install needed.",
+        help="Verify it yourself: the full run as JSON — every model call, prompt, token "
+             "count and timestamp. Don't trust the label; inspect the data (or run your own live).",
     )
     ws = st.radio("workspace", WORKSPACES, horizontal=True, label_visibility="collapsed",
                   key="workspace")
