@@ -129,22 +129,15 @@ def render_hero(run: dict) -> None:
     p0_1 = sum(1 for f in g1["findings"] if f["priority"] == "P0")
     p0_2 = sum(1 for f in g2["findings"] if f["priority"] == "P0")
 
-    theme.kicker("Knowledge Engine · evidence-backed spec red team · synthetic case: AnDigi insurance")
+    theme.kicker("Evidence-backed spec red team · AnDigi insurance (synthetic)")
+    st.markdown(theme.flow_diagram(g1["overall_score"], g2["overall_score"], len(arbiter["amendments"])),
+                unsafe_allow_html=True)
     st.markdown(
-        f'<div class="se-hero-head">{len(arbiter["amendments"])} defects were hiding in this '
-        "approved-looking insurance spec.<br>The agent team caught them — with receipts.</div>",
+        '<div class="se-flow-cap">Messy evidence in. A verified, signed spec out.</div>'
+        f'<p class="se-hero-sub">{len(arbiter["amendments"])} defects caught with receipts — '
+        "before a human signs off.</p>",
         unsafe_allow_html=True,
     )
-    st.markdown(
-        '<p class="se-hero-sub">An AI team red-teams a draft spec against the evidence. '
-        "Case: <b style=\'color:#E7EAF0\'>AnDigi insurance — claims + AI triage</b>.</p>",
-        unsafe_allow_html=True,
-    )
-    pipe = " ".join(
-        f'<span class="se-id">{p}</span>' + ('<span style="color:#2A3140"> → </span>' if i < 4 else "")
-        for i, p in enumerate(["evidence", "gate", "11-agent debate", "corrected spec", "you sign off"])
-    )
-    st.markdown(f'<div style="font-family:JetBrains Mono,monospace;font-size:11.5px;margin:2px 0 10px;line-height:2">{pipe}</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="se-stats">'
         + stat(f'<span class="from">{g1["overall_score"]} →</span> '
@@ -174,7 +167,7 @@ def render_hero(run: dict) -> None:
         summary = (
             f'<div class="chead"><span class="cnum">{esc(c1["id"])}</span>'
             f'<span class="ctitle">CEO says auto-approve · policy 4.1 says human review</span>'
-            + (f'<span class="se-chip" style="border-color:#F2A65A;color:#F2A65A">{theme.micon("flag", size="13px")} human decision</span>' if c1["needs_human_confirmation"] else "")
+            + (f'<span class="se-chip" style="border-color:#D6A03C;color:#D6A03C">{theme.micon("flag", size="13px")} human decision</span>' if c1["needs_human_confirmation"] else "")
             + "</div>"
         )
         st.markdown(f'<div class="se-catch">{summary}</div>', unsafe_allow_html=True)
@@ -226,7 +219,7 @@ def render_hero(run: dict) -> None:
 
     # ---- gate strip ---------------------------------------------------------
     theme.section("the gate", "Code-enforced. Models cannot override these results.", f'{gate1["errors"]} errors → {gate2["errors"]}')
-    chips = " ".join(f'<span class="se-chip" style="border-color:{"#F85149" if h["severity"] == "error" else "#F2A65A"};color:{"#F85149" if h["severity"] == "error" else "#F2A65A"};margin-left:0">{esc(h["rule_id"])} {esc(h["requirement_id"])}</span>' for h in gate1["hits"])
+    chips = " ".join(f'<span class="se-chip" style="border-color:{"#E0655B" if h["severity"] == "error" else "#D6A03C"};color:{"#E0655B" if h["severity"] == "error" else "#D6A03C"};margin-left:0">{esc(h["rule_id"])} {esc(h["requirement_id"])}</span>' for h in gate1["hits"])
     st.markdown(f'<div class="se-gatescan" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;padding:4px 2px">{chips}</div>', unsafe_allow_html=True)
     with st.expander("inspect the deterministic gate log"):
         hits_html = "".join(
@@ -272,16 +265,10 @@ def render_hero(run: dict) -> None:
     if ev:
         theme.section("the eval", "Detection recall on the planted-defect benchmark",
                       f'{ev["caught"]}/{ev["total"]} caught · recall {ev["recall"]:.0%}')
-        st.markdown(
-            '<p class="se-body" style="max-width:760px;margin-top:-6px">This case ships with '
-            f'<b>{ev["total"]} deliberately planted defects</b> and a ground-truth file. '
-            "The same scorer runs on scripted and live runs — recall is measured, not claimed.</p>",
-            unsafe_allow_html=True,
-        )
         with st.expander("per-defect scorecard — what was caught, and through which channel"):
             rows = "".join(
                 f'<div class="se-gatehit"><span class="{"rid" if d["caught"] else "warn"}" '
-                f'style="color:{"#3FB950" if d["caught"] else "#F85149"}">'
+                f'style="color:{"#5DB07C" if d["caught"] else "#E0655B"}">'
                 f'{theme.micon("check", size="14px") if d["caught"] else theme.micon("close", size="14px") + " MISSED"}</span> · {esc(d["id"])} [{esc(d["channel"])}] '
                 f'{esc(d["title"])} → <i>{esc(d["where"])}</i></div>'
                 for d in ev["defects"]
@@ -406,7 +393,7 @@ def render_shipped_feature(run: dict) -> None:
     if st.button(":material/play_arrow: Run acceptance board (vectors derived independently from the baseline)"):
         results = compiler.run_acceptance(table)
         for r in results:
-            color = "#3FB950" if r["passed"] else "#F85149"
+            color = "#5DB07C" if r["passed"] else "#E0655B"
             mark = theme.micon("check", size="15px") if r["passed"] else theme.micon("close", size="15px")
             st.markdown(f'<div class="se-gatehit"><span style="color:{color};font-weight:600">{mark} {esc(r["id"])}</span> '
                         f'· {esc(r["ac"])} · expected <b>{esc(r["expect"])}</b> got <b>{esc(r["got"])}</b></div>',
@@ -440,8 +427,8 @@ def render_shipped_feature(run: dict) -> None:
         return
     claim = {"amount": amount, "policy": policy, "photo": photo, "precondition": precond, "description": desc}
     entry = compiler.evaluate(table, claim)
-    color = {"approve": "#3FB950", "reject": "#F85149", "block": "#F85149",
-             "investigate": "#F2A65A", "review": "#F2A65A"}[entry.verdict]
+    color = {"approve": "#5DB07C", "reject": "#E0655B", "block": "#E0655B",
+             "investigate": "#D6A03C", "review": "#D6A03C"}[entry.verdict]
     st.markdown(
         f'<div class="se-catch" style="border-left-color:{color}">'
         f'<div class="chead"><span class="cnum" style="color:{color}">{esc(entry.title)}</span></div>'
@@ -560,11 +547,11 @@ def _linkify(escaped_text: str) -> str:
 
 
 MACHINE_ROLES = {
-    "wiki": ("Evidence Wiki", "#7C8CFF"),
-    "conflicts": ("Conflict Check", "#F2A65A"),
-    "gate": ("Code Gate", "#F85149"),
-    "grader": ("Grader · D1–D5", "#F2A65A"),
-    "advisor": ("Advisor", "#3FB950"),
+    "wiki": ("Evidence Wiki", "#D6A03C"),
+    "conflicts": ("Conflict Check", "#D6A03C"),
+    "gate": ("Code Gate", "#E0655B"),
+    "grader": ("Grader · D1–D5", "#D6A03C"),
+    "advisor": ("Advisor", "#5DB07C"),
 }
 
 LEGEND = ("hover any underlined id to read what it is — W evidence claim · C conflict · "
@@ -691,7 +678,7 @@ def _render_feed_item(item: dict) -> None:
                                   reply=item.get("reply", ""), work_notes=item.get("work_notes")),
                     unsafe_allow_html=True)
     elif kind == "human":
-        st.markdown(f'<div class="se-human"><div class="who" style="color:#A3B3FF;font-family:JetBrains Mono,monospace;'
+        st.markdown(f'<div class="se-human"><div class="who" style="color:#E6C079;font-family:JetBrains Mono,monospace;'
                     f'font-size:11px;text-transform:uppercase;letter-spacing:.08em">You · authority: highest</div>'
                     f'{esc(item["text"])}</div>', unsafe_allow_html=True)
 
@@ -881,7 +868,7 @@ WORKSPACES = ["Overview", "Debate", "Verify", "Sign-off"]
 def render_run_bar(run: dict) -> str:
     meta = run["meta"]
     kind = meta.get("kind", "run")
-    kcolor = {"scripted-demo": "#F2A65A", "live": "#3FB950", "real-inference": "#3FB950"}.get(kind, "#9AA3B2")
+    kcolor = {"scripted-demo": "#D6A03C", "live": "#5DB07C", "real-inference": "#5DB07C"}.get(kind, "#9C9A92")
     score = run["stages"]["grade_round2"]["overall_score"]
     c_back, c_bar, c_dl = st.columns([0.6, 9.6, 1.8], gap="small")
     if c_back.button(":material/arrow_back:", help="Back to the start screen (case brief + play)",
@@ -892,7 +879,7 @@ def render_run_bar(run: dict) -> str:
         st.session_state.pop("chat_played", None)
         st.rerun()
     c_bar.markdown(
-        f'<div class="se-runbar" style="margin-top:0"><span class="idn"><b style="color:#E7EAF0">AnDigi</b> · '
+        f'<div class="se-runbar" style="margin-top:0"><span class="idn"><b style="color:#ECEAE3">AnDigi</b> · '
         f'feature: in-app claim → AI triage → instant payout</span>'
         f'<span class="kind" style="color:{kcolor};border-color:{kcolor}66">{esc(kind)}</span>'
         f'<span class="idn">11 agents · 5 phases · {score}/100</span>'
@@ -984,7 +971,7 @@ def render_console(run: dict) -> None:
             theme.card(
                 f'<div class="rowtop"><span class="se-id">{esc(rule.id)}</span>'
                 f'<span class="se-topic">{esc(rule.title)}</span>'
-                f'<span class="se-chip" style="border-color:{"#F85149" if rule.severity == "blocking" else "#9AA3B2"}">{esc(rule.severity)}</span></div>'
+                f'<span class="se-chip" style="border-color:{"#E0655B" if rule.severity == "blocking" else "#9C9A92"}">{esc(rule.severity)}</span></div>'
                 f'<div class="se-body">{esc(rule.rule_text)}</div>'
                 f'<div class="se-trace">born from: {esc(rule.born_item)} · by you · {esc(rule.born_date)}</div>'
             )
@@ -1114,14 +1101,14 @@ def render_trace(run: dict) -> None:
             )
             st.markdown(f'<div class="se-card"><div style="display:flex;gap:14px;flex-wrap:wrap">{dims}</div></div>', unsafe_allow_html=True)
             checks = "".join(
-                f'<div class="se-gatehit"><span class="{ "rid" if c["result"] == "FAIL" else "" }" style="color:{"#F85149" if c["result"] == "FAIL" else "#3FB950"}">'
+                f'<div class="se-gatehit"><span class="{ "rid" if c["result"] == "FAIL" else "" }" style="color:{"#E0655B" if c["result"] == "FAIL" else "#5DB07C"}">'
                 f'{ theme.micon("close", size="14px") if c["result"] == "FAIL" else theme.micon("check", size="14px")} {esc(c["dimension"])}</span> {esc(c["item"])}'
                 + (f' — <i>{esc(c["note"])}</i>' if c["note"] else "") + "</div>"
                 for c in g["checklist"]
             )
             theme.card(checks)
             for f in g["findings"]:
-                color = {"P0": "#F85149", "P1": "#F2A65A", "P2": "#9AA4B2"}[f["priority"]]
+                color = {"P0": "#E0655B", "P1": "#D6A03C", "P2": "#9C9A92"}[f["priority"]]
                 theme.card(
                     f'<div class="rowtop"><span class="se-id">{esc(f["id"])}</span>'
                     f'<span class="se-chip" style="border-color:{color};color:{color}">{esc(f["priority"])} · {esc(f["dimension"])}</span>'
@@ -1185,7 +1172,7 @@ def render_trace(run: dict) -> None:
     with tabs[4]:
         if "advisor" in s:
             for item in s["advisor"]["items"]:
-                color = {"S0": "#F85149", "S1": "#F2A65A", "S2": "#9AA4B2"}[item["severity"]]
+                color = {"S0": "#E0655B", "S1": "#D6A03C", "S2": "#9C9A92"}[item["severity"]]
                 theme.card(
                     f'<div class="rowtop"><span class="se-chip" style="border-color:{color};color:{color}">{esc(item["severity"])}</span>'
                     f'<span class="se-topic">{esc(item["concern"])}</span></div>'
