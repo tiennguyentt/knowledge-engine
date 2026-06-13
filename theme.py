@@ -2,7 +2,7 @@
 
 Single-file, reusable: drop `theme.py` + `.streamlit/config.toml` into any
 Streamlit app to get the "Forensic Ledger" design language — warm near-black
-ink, signal-gold accent, Fraunces editorial display, Hanken Grotesk body,
+ink, signal-gold accent, Schibsted Grotesk (display + body),
 JetBrains Mono data, git-diff details. Call `theme.inject()` once at the top,
 then build blocks with the helpers below (they return HTML strings; pass
 them to `theme.card(...)` / `st.markdown(..., unsafe_allow_html=True)`).
@@ -26,11 +26,11 @@ PALETTE = {
 
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..600,0,0&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-25..0&display=block');
 
-/* ── "Forensic Ledger" ─ editorial-technical, instrument-grade.
-   Display: Fraunces (editorial serif). Body: Hanken Grotesk.
+/* ── "Forensic Ledger" ─ instrument-grade, two faces only.
+   Words: Schibsted Grotesk (display = heavy + tight, body = regular).
    Data/machine truth: JetBrains Mono. Accent: signal gold = the
    highlighter / "caught it" / human-decision thread. */
 :root {
@@ -43,7 +43,7 @@ CSS = """
 
 html, body, [data-testid="stAppViewContainer"] {
   background: var(--bg); color: var(--ink);
-  font-family: 'Hanken Grotesk', sans-serif; font-size: 15px; line-height: 1.66;
+  font-family: 'Schibsted Grotesk', sans-serif; font-size: 15px; line-height: 1.66;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
 [data-testid="stHeader"] { background: transparent; }
@@ -64,8 +64,8 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="stAppViewContainer"] .main { position: relative; z-index: 1; }
 
 h1, h2, h3 {
-  font-family: 'Fraunces', serif !important; font-weight: 560 !important;
-  letter-spacing: -0.012em; font-optical-sizing: auto;
+  font-family: 'Schibsted Grotesk', sans-serif !important; font-weight: 700 !important;
+  letter-spacing: -0.02em;
 }
 
 [data-testid="stSidebar"] {
@@ -112,7 +112,7 @@ h1, h2, h3 {
   padding: 14px 16px; transition: color .18s ease;
 }
 [data-testid="stExpander"] summary:hover { color: var(--accent); }
-.stTextInput input, .stSelectbox div { font-family: 'Hanken Grotesk', sans-serif; }
+.stTextInput input, .stSelectbox div { font-family: 'Schibsted Grotesk', sans-serif; }
 
 /* ---- motion ----------------------------------------------------------- */
 @keyframes seUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -155,10 +155,9 @@ h1, h2, h3 {
   animation: seBlink 1.1s steps(1) infinite;
 }
 .se-hero-head {
-  font-family: 'Fraunces', serif; font-weight: 600;
-  font-size: clamp(32px, 4.6vw, 52px); letter-spacing: -0.02em;
-  color: var(--ink); line-height: 1.12; margin: 0 0 20px;
-  font-optical-sizing: auto;
+  font-family: 'Schibsted Grotesk', sans-serif; font-weight: 760;
+  font-size: clamp(32px, 4.6vw, 52px); letter-spacing: -0.028em;
+  color: var(--ink); line-height: 1.08; margin: 0 0 20px;
 }
 .se-hero-sub { color: var(--muted); font-size: 16px; max-width: 70ch; line-height: 1.7; margin-bottom: 8px; }
 
@@ -173,7 +172,7 @@ h1, h2, h3 {
   color: var(--accent); letter-spacing: .14em; text-transform: uppercase;
 }
 .se-spechead .stitle {
-  font-family: 'Fraunces', serif; font-weight: 600; font-size: 21px; color: var(--ink);
+  font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 21px; color: var(--ink);
 }
 .se-spechead .sstatus {
   font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--dim); margin-left: auto;
@@ -188,7 +187,7 @@ h1, h2, h3 {
   transition: border-color .2s ease, transform .2s ease;
 }
 .se-stat:hover { border-color: var(--line-strong); transform: translateY(-2px); }
-.se-stat .v { font-family: 'Fraunces', serif; font-weight: 580; font-size: 30px; color: var(--ink); letter-spacing: -0.01em; font-optical-sizing: auto; }
+.se-stat .v { font-family: 'Schibsted Grotesk', sans-serif; font-weight: 700; font-size: 30px; color: var(--ink); letter-spacing: -0.02em; }
 .se-stat .v .from { color: var(--dim); font-size: 16px; font-weight: 500; }
 .se-stat .v .delta { color: var(--accent); }
 .se-stat .l { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
@@ -202,7 +201,7 @@ h1, h2, h3 {
 .se-card:hover { border-color: var(--line-strong); }
 .se-card .rowtop { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .se-id { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: .04em; }
-.se-topic { font-family: 'Fraunces', serif; font-weight: 600; font-size: 15.5px; color: var(--ink); }
+.se-topic { font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 15.5px; color: var(--ink); }
 .se-body { color: #CDCAC0; font-size: 14.5px; line-height: 1.7; margin-top: 8px; }
 .se-chip {
   font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .06em;
@@ -246,7 +245,7 @@ h1, h2, h3 {
 .se-catch:hover { border-color: #3A382F; transform: translateY(-2px); }
 .se-catch .chead { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .se-catch .cnum { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--del); font-weight: 600; letter-spacing: .08em; }
-.se-catch .ctitle { font-family: 'Fraunces', serif; font-weight: 600; font-size: 16.5px; color: var(--ink); line-height: 1.5; }
+.se-catch .ctitle { font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 16.5px; color: var(--ink); line-height: 1.5; }
 .se-vs { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); margin: 16px 0 2px; letter-spacing: .1em; }
 .se-diff-del {
   font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #B57E78;
@@ -327,7 +326,7 @@ h1, h2, h3 {
   animation: seUp .55s cubic-bezier(.16,1,.3,1) both;
 }
 .se-fnode .fk { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
-.se-fnode .ft { font-family: 'Fraunces', serif; font-weight: 560; font-size: 17px; color: var(--ink); line-height: 1.12; margin-top: 8px; }
+.se-fnode .ft { font-family: 'Schibsted Grotesk', sans-serif; font-weight: 640; font-size: 17px; color: var(--ink); line-height: 1.12; margin-top: 8px; }
 .se-fnode .fs { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
 .se-fnode.gate { border-color: rgba(214,160,60,.55); box-shadow: 0 18px 40px rgba(0,0,0,.45); }
 .se-fnode.gate .fk, .se-fnode.gate .ft { color: var(--accent); }
@@ -342,7 +341,7 @@ h1, h2, h3 {
 }
 @keyframes seFlow { 0% { left: -14px; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { left: calc(100% - 2px); opacity: 0; } }
 .se-flink::before { content: '▸'; position: absolute; right: -7px; top: 50%; transform: translateY(-50%); color: var(--line-strong); font-size: 11px; }
-.se-flow-cap { font-family: 'Fraunces', serif; font-weight: 560; font-size: clamp(24px, 3.4vw, 38px); letter-spacing: -0.018em; color: var(--ink); line-height: 1.12; margin: 6px 0 10px; font-optical-sizing: auto; }
+.se-flow-cap { font-family: 'Schibsted Grotesk', sans-serif; font-weight: 740; font-size: clamp(24px, 3.4vw, 38px); letter-spacing: -0.028em; color: var(--ink); line-height: 1.1; margin: 6px 0 10px; }
 @media (prefers-reduced-motion: reduce) { .se-fnode, .se-flink::after, .se-fnode.gate::after { animation: none; } }
 </style>
 """
@@ -550,7 +549,7 @@ CHAT_CSS = """
   z-index: 999; width: max-content; max-width: 380px; white-space: normal;
   background: var(--raised); border: 1px solid var(--line-strong); border-radius: 10px;
   box-shadow: 0 8px 28px rgba(0,0,0,.5);
-  padding: 10px 13px; font-family: 'Hanken Grotesk', sans-serif; font-size: 12px;
+  padding: 10px 13px; font-family: 'Schibsted Grotesk', sans-serif; font-size: 12px;
   line-height: 1.6; color: #D2CFC5; letter-spacing: 0; text-transform: none;
   opacity: 0; pointer-events: none; transform: translateY(4px);
   transition: opacity .12s ease, transform .12s ease;
