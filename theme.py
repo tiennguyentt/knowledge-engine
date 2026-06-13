@@ -136,6 +136,16 @@ h1, h2, h3 {
   .stButton button, .stDownloadButton button { width: 100%; min-height: 44px; }
   /* let the workspace tabs wrap instead of overflowing */
   .stRadio [role="radiogroup"] { flex-wrap: wrap; gap: 4px 10px; }
+  /* the pipeline diagram stacks vertically on a phone instead of scrolling
+     off the right edge — every node full-width, top to bottom */
+  html, body, [data-testid="stAppViewContainer"] { overflow-x: hidden; }
+  .se-flow { flex-direction: column; align-items: stretch; overflow-x: hidden; }
+  .se-fnode { min-width: 0; width: 100%; }
+  .se-flink { width: 100%; height: 14px; flex: 0 0 14px; align-self: stretch; background: transparent; }
+  .se-flink::after { display: none; }
+  .se-flink::before { content: '↓'; position: static; display: block; text-align: center; transform: none; color: var(--dim); }
+  /* keep wide mono content (telemetry, reasoning) from forcing a sideways scroll */
+  .se-telemetry, .se-reason, .se-leadfix { overflow-wrap: anywhere; }
 }
 
 /* ---- motion ----------------------------------------------------------- */
