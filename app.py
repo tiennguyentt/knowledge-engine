@@ -50,25 +50,10 @@ with st.sidebar:
 
     st.divider()
     st.header("Run live")
-    # PRIMARY try-path: sponsored inference on a server-side key — no key needed,
-    # capped. The visitor never has to create or paste a key to see the real thing.
-    # Models you can run on the sponsored key (cheap + reliable first). Type any
-    # OpenRouter id to try another — e.g. a DeepSeek V4. The per-run token cap
-    # bounds the cost whatever you pick.
-    _SPON_MODELS = ["deepseek/deepseek-chat", "google/gemini-2.0-flash-001",
-                    "meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct"]
-    sponsored_model = sponsored.SPONSORED_MODEL
-    if sponsored.available():
-        _left = sponsored.remaining_runs()
-        sponsored_model = st.selectbox(
-            "Model for the live run", _SPON_MODELS, accept_new_options=True,
-            help="The free live run uses this model. Type any OpenRouter id (e.g. a DeepSeek V4 id) to try a different one.")
-        run_sponsored = st.button(":material/bolt: Run it live — on us (~5 min)", type="primary",
-                                  disabled=_left <= 0, use_container_width=True)
-        st.caption(f"real inference · **no key needed** · {esc(sponsored_model.split('/')[-1])} · {_left} free runs left today"
-                   if _left > 0 else "today's free live runs are used up — use your own key below, or come back tomorrow")
-    else:
-        run_sponsored = False
+    # The PRIMARY "Run it live — on us" control lives in the MAIN column (see
+    # render_hero) so it's reachable on mobile without opening this sidebar.
+    st.caption("▶ The “Run it live — on us” button is on the main screen (no key "
+               "needed). The option below is only for your own private evidence.")
 
     # EDGE CASE: bring your own key — only for running your OWN private evidence.
     with st.expander("Run on your own evidence (your key, private)", expanded=False):
@@ -106,9 +91,15 @@ with st.sidebar:
     )
 
 
-# A main-column "watch it run live" button (see render_hero) sets this flag and
+# Models offered for the no-key live run (cheap + reliable first); free-text
+# entry lets you type any OpenRouter id — e.g. a DeepSeek V4.
+SPON_MODELS = ["deepseek/deepseek-chat", "google/gemini-2.0-flash-001",
+               "meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct"]
+
+# The main-column "watch it run live" button (see render_hero) sets this flag and
 # reruns; we read it here, after the sidebar, so the routing can start the run.
 # This keeps the primary action reachable on mobile, where the sidebar is hidden.
+run_sponsored = False
 if st.session_state.pop("_trigger_sponsored", False):
     run_sponsored = True
 
@@ -236,20 +227,26 @@ def render_hero(run: dict) -> None:
     # main-column action so it's reachable on mobile (sidebar is hidden there).
     # The recorded run above is already the instant hero; this is the "see it
     # happen" path — honestly labelled as a ~5-min live stream.
-    if sponsored.available() and sponsored.remaining_runs() > 0:
-        if st.button("▶ Watch it run live on a real model — ~5 min · no key",
-                     key="hero_live", type="primary", use_container_width=True):
+    if sponsored.available():
+        _left = sponsored.remaining_runs()
+        # model picker lives here in the MAIN column (not the hidden sidebar) so a
+        # phone user can change the model AND run live without the hamburger.
+        st.selectbox("Model for the live run", SPON_MODELS, key="spon_model",
+                     accept_new_options=True,
+                     help="The free live run uses this model. Type any OpenRouter id (e.g. a DeepSeek V4 id) to try another.")
+        if st.button(f"▶ Watch it run live — ~5 min · no key  ·  {_left} free left",
+                     key="hero_live", type="primary", disabled=_left <= 0, use_container_width=True):
             st.session_state["_trigger_sponsored"] = True
             st.rerun()
         st.markdown(
             '<div class="se-try">You\'re viewing a <b>recorded real run</b> (instant, above). Tap to watch '
-            "a fresh one stream live — or open any receipt below to audit a claim against its source.</div>",
+            "a fresh one stream live on the model you picked — or open any receipt below to audit a claim.</div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             '<div class="se-try"><span class="gold">▶ Audit it yourself</span> — open any receipt below to '
-            "trace a claim to its source. To run live on your own evidence, use the sidebar.</div>",
+            "trace a claim to its source. (Live runs need a sponsored key configured on the deployment.)</div>",
             unsafe_allow_html=True,
         )
     # the pipeline, demoted to "how it runs"
@@ -1341,7 +1338,8 @@ def render_live(sponsored_run: bool = False) -> None:
     if sponsored_run:
         # routing has verified availability/cap and is holding the slot; we run
         # on the server-side key (capped budget) and release the slot when done.
-        eff_key, eff_model = sponsored.key(), (sponsored_model or sponsored.SPONSORED_MODEL)
+        eff_key = sponsored.key()
+        eff_model = st.session_state.get("spon_model") or sponsored.SPONSORED_MODEL
         eff_base, eff_budget = DEFAULT_BASE_URL, sponsored.PER_RUN_TOKEN_BUDGET
     else:
         eff_key, eff_model, eff_base, eff_budget = api_key, model, base_url, 0
