@@ -143,9 +143,21 @@ def run_pipeline(
                    amendments=len(debate["arbiter"]["amendments"]))
         progress("debate", "done")
 
-        corrected = apply_amendments(draft, AmendmentSet.model_validate(debate["arbiter"]))
-        log.append("amendments_applied", count=len(debate["arbiter"]["amendments"]),
-                   new_requirements=len(debate["arbiter"]["new_requirements"]))
+        arb = AmendmentSet.model_validate(debate["arbiter"])
+        valid_claim_ids = {c.id for c in wiki.claims}
+        dropped = [r for r in arb.new_requirements
+                   if not any(cid in valid_claim_ids for cid in r.source_claim_ids)]
+        if dropped:
+            arb = arb.model_copy(update={"new_requirements": [
+                r for r in arb.new_requirements
+                if any(cid in valid_claim_ids for cid in r.source_claim_ids)
+            ]})
+            log.append("amendments_filtered",
+                       dropped=[r.id for r in dropped],
+                       reason="new_requirements with no wiki-backed source_claim_ids dropped (hallucination guard)")
+        corrected = apply_amendments(draft, arb)
+        log.append("amendments_applied", count=len(arb.amendments),
+                   new_requirements=len(arb.new_requirements))
 
         progress("regrade", "start")
         set_state("graded", "round 2 of 3 (post-debate re-grade)")
