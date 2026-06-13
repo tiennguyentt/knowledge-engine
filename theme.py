@@ -533,19 +533,22 @@ def telemetry(meta: dict) -> str:
     real = kind in ("live", "real-inference") and (tin + tout) > 0
     if real:
         tid = _hashlib.sha1(_json.dumps(meta, sort_keys=True).encode()).hexdigest()[:7]
+        # No "real inference" claim — words don't prove anything. Just the
+        # checkable facts (model, exact tokens, duration, content-hash trace);
+        # the page tells the viewer to verify by downloading the raw run.
         return (
-            '<div class="se-telemetry"><span class="dot"></span>'
-            '<span class="lbl">real inference</span>'
+            '<div class="se-telemetry"><span class="lbl">recorded run</span>'
             f'<b class="gold">{esc(model)}</b><span class="sep">·</span>'
             f'<span><b>{tin:,}</b> in / <b>{tout:,}</b> out tokens</span><span class="sep">·</span>'
             f'<span><b>{dur}</b>s</span><span class="sep">·</span>'
-            f'<span>trace <b>{tid}</b></span></div>'
+            f'<span>trace <b>{tid}</b></span><span class="sep">·</span>'
+            '<span class="gold">⬇ download &amp; verify ↑</span></div>'
         )
     return (
         '<div class="se-telemetry"><span class="lbl">replay</span>'
-        '<span>scripted · deterministic — every number below is reproducible</span>'
+        '<span>scripted · deterministic — every number is reproducible</span>'
         '<span class="sep">·</span>'
-        '<span class="gold">run live on your key for real inference →</span></div>'
+        '<span class="gold">run live on your key to see model inference →</span></div>'
     )
 
 
