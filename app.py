@@ -28,6 +28,9 @@ from engine.schemas import DraftSpec
 st.set_page_config(page_title="Knowledge Engine", page_icon="assets/favicon.png", layout="wide")
 theme.inject()
 theme.inject_chat()
+# KE mark at the top of the app. The clickable "home" reset lives in the sidebar
+# (a logo link would reload the page; we want an in-app reset).
+st.logo("assets/favicon-64.png", size="large")
 
 # st.chat_input pins itself to the viewport bottom and Streamlit yanks the page
 # down to it on first load, burying the verdict. The yank fires after the (tall)
@@ -64,6 +67,21 @@ if st.session_state.get("view", "demo") == "intro":
 
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
+    # Home: return to the default overview screen from anywhere — including a run
+    # the user stopped mid-stream, where there is otherwise nowhere to click back.
+    if st.button(":material/home: Knowledge Engine — overview", use_container_width=True,
+                 help="Back to the default screen"):
+        _runs = list_runs()
+        _home = next((p for p in _runs if not p.stem.startswith("demo")),
+                     _runs[0] if _runs else None)
+        if _home is not None:
+            st.session_state["_pending_pick"] = _home
+        for _k in ("active_run", "active_run_name"):
+            st.session_state.pop(_k, None)
+        st.session_state["workspace"] = "Overview"
+        st.session_state["_live_result"] = False
+        st.session_state["view"] = "demo"
+        st.rerun()
     if st.button(":material/arrow_back: What this system solves", use_container_width=True):
         st.session_state["view"] = "intro"
         st.rerun()
@@ -479,17 +497,17 @@ def render_hero(run: dict) -> None:
                 st.session_state["_trigger_sponsored"] = True
                 st.rerun()
 
-    # type/test, without leaving the verdict: a persistent input pinned to the
-    # bottom. Your word carries top authority. Submitting seeds the debate thread
-    # from this run, routes your point to the right agent, and opens the Debate
-    # workspace so you see the exchange (honest no-key handling lives downstream).
-    prompt = st.chat_input("Challenge a finding, or ask the team a question…")
-    if prompt:
-        if not st.session_state.get("chat_feed"):
-            st.session_state["chat_feed"] = _build_feed(run)
-        _handle_human_message(run, prompt)
-        st.session_state["workspace"] = "Debate"
-        st.rerun()
+    # The bottom-pinned input only makes sense once the user has run the team on
+    # their OWN evidence — on the recorded demo there is no live team to answer.
+    # So it appears only after a live/sponsored run completes this session.
+    if st.session_state.get("_live_result"):
+        prompt = st.chat_input("Challenge a finding, or ask the team a question…")
+        if prompt:
+            if not st.session_state.get("chat_feed"):
+                st.session_state["chat_feed"] = _build_feed(run)
+            _handle_human_message(run, prompt)
+            st.session_state["workspace"] = "Debate"
+            st.rerun()
 
 
 
@@ -833,10 +851,13 @@ def render_chat(run: dict) -> None:
             for item in feed:
                 _render_feed_item(item)
 
-    prompt = st.chat_input("Type your thought into the debate… (your message carries top authority)")
-    if prompt:
-        _handle_human_message(run, prompt)
-        st.rerun()
+    # Only offer to inject into the debate when the team is actually live (the
+    # user's own run); on the recorded demo the transcript is read-only.
+    if st.session_state.get("_live_result"):
+        prompt = st.chat_input("Type your thought into the debate… (your message carries top authority)")
+        if prompt:
+            _handle_human_message(run, prompt)
+            st.rerun()
 
 
 def _render_feed_item(item: dict) -> None:
@@ -1549,6 +1570,8 @@ def render_live(sponsored_run: bool = False) -> None:
     st.session_state["active_run"] = run
     st.session_state["active_run_name"] = str(saved_path)
     st.session_state["workspace"] = "Overview"
+    # this is the user's own live team → enable the challenge/debate chat input
+    st.session_state["_live_result"] = True
     # Point the sidebar picker at the run we just produced. Without this the
     # picker stays on a recorded run, the routing reloads it, and the user's own
     # result silently vanishes back into the AnDigi demo. We can't write the
@@ -1599,6 +1622,7 @@ else:
                 st.session_state["active_run"] = _run
                 st.session_state["active_run_name"] = str(chosen)
                 st.session_state["chat_feed"] = []
+                st.session_state["_live_result"] = False  # back on a recorded run → no live chat
             _done_msg = st.session_state.pop("_live_done_msg", None)
             if _done_msg:
                 st.success(_done_msg)
