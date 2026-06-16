@@ -30,14 +30,29 @@ theme.inject()
 theme.inject_chat()
 
 # st.chat_input pins itself to the viewport bottom and Streamlit yanks the page
-# down to it on first load, burying the verdict. Scroll back to the top once per
-# session so a cold viewer lands on the catch, not the input bar.
+# down to it on first load, burying the verdict. The yank fires after the (tall)
+# page settles, so a single scroll-to-top loses the race — retry across a ~1.3s
+# window and hit every candidate scroll container. Once per session so it never
+# fights the user's own scrolling on later interactions.
 if not st.session_state.get("_landed_top"):
     st.session_state["_landed_top"] = True
     components.html(
-        "<script>setTimeout(function(){try{"
-        "(parent.document.querySelector('section.main')||parent.document.scrollingElement)"
-        ".scrollTo(0,0);}catch(e){}}, 150);</script>",
+        """<script>
+        (function(){
+          function toTop(){
+            try{
+              var d = window.parent.document;
+              ['[data-testid="stMain"]','section.main',
+               '[data-testid="stAppViewContainer"]'].forEach(function(sel){
+                var el = d.querySelector(sel); if(el){ el.scrollTop = 0; }
+              });
+              if(d.scrollingElement){ d.scrollingElement.scrollTop = 0; }
+              window.parent.scrollTo(0,0);
+            }catch(e){}
+          }
+          [0,60,150,300,500,800,1300].forEach(function(t){ setTimeout(toTop, t); });
+        })();
+        </script>""",
         height=0,
     )
 
@@ -1543,55 +1558,48 @@ def render_live(sponsored_run: bool = False) -> None:
 # Sponsored guards live here so a busy/capped slot falls through to the recorded
 # run instead of blanking the page. render_live(sponsored_run=True) assumes the
 # slot is held and releases it.
-_live_started = False
+# The whole main area lives in ONE st.empty() placeholder. render_live() blocks
+# inside the pipeline, and Streamlit only clears stale elements when a script
+# finishes — so a long-running live frame would otherwise leave the previous
+# recorded report stacked behind it. An st.empty() OVERWRITES its single child
+# wholesale the moment new content renders into it, clearing the old report
+# immediately instead of waiting for the (blocking) run to complete.
+body = st.empty()
 
-# Buttons read True only on their click frame, so persist the run intent. We then
-# flip to ONE clean frame before running: render_live() blocks inside the pipeline,
-# and Streamlit only clears stale elements when a script finishes — so without the
-# clean frame the previous recorded report lingers behind the live progress.
-if run_sponsored:
-    st.session_state["_live_pending"] = "sponsored"
+# Sponsored: a busy/capped slot falls through to the recorded run rather than
+# blanking the page. render_live(sponsored_run=True) assumes the slot is held.
+_sponsored_ok = (run_sponsored and sponsored.available()
+                 and sponsored.remaining_runs() > 0 and sponsored.acquire_slot())
+
+if _sponsored_ok:
+    with body.container():
+        render_live(sponsored_run=True)
 elif run_live and api_key:
-    st.session_state["_live_pending"] = "byo"
-
-_pending = st.session_state.get("_live_pending")
-if _pending and not st.session_state.get("_live_clearing"):
-    st.session_state["_live_clearing"] = True
-    st.rerun()  # this frame renders nothing in the main column → clears the old report
-elif _pending:
-    st.session_state["_live_pending"] = None
-    st.session_state["_live_clearing"] = False
-    if _pending == "sponsored":
-        if sponsored.available() and sponsored.remaining_runs() > 0 and sponsored.acquire_slot():
-            render_live(sponsored_run=True)
-            _live_started = True
-        else:
+    with body.container():
+        render_live()
+else:
+    with body.container():
+        if run_sponsored:
             st.warning("Free live runs are busy or used up right now, here's a recorded run instead. "
                        "Try again in a moment, or use your own key.")
-    else:
-        render_live()
-        _live_started = True
-
-if _live_started:
-    pass
-elif chosen:
-    _run = st.session_state.get("active_run")
-    if st.session_state.get("active_run_name") != str(chosen):
-        _run = load_run(chosen)
-        st.session_state["active_run"] = _run
-        st.session_state["active_run_name"] = str(chosen)
-        st.session_state["chat_feed"] = []
-    _done_msg = st.session_state.pop("_live_done_msg", None)
-    if _done_msg:
-        st.success(_done_msg)
-    ws = render_run_bar(_run)
-    if ws == "Overview":
-        render_hero(_run)
-    elif ws == "Debate":
-        render_chat(_run)
-    elif ws == "Verify":
-        render_shipped_feature(_run)
-    else:
-        render_console(_run)
-else:
-    st.error("No recorded runs found in data/runs/, run scripts/make_demo_run.py first.")
+        if chosen:
+            _run = st.session_state.get("active_run")
+            if st.session_state.get("active_run_name") != str(chosen):
+                _run = load_run(chosen)
+                st.session_state["active_run"] = _run
+                st.session_state["active_run_name"] = str(chosen)
+                st.session_state["chat_feed"] = []
+            _done_msg = st.session_state.pop("_live_done_msg", None)
+            if _done_msg:
+                st.success(_done_msg)
+            ws = render_run_bar(_run)
+            if ws == "Overview":
+                render_hero(_run)
+            elif ws == "Debate":
+                render_chat(_run)
+            elif ws == "Verify":
+                render_shipped_feature(_run)
+            else:
+                render_console(_run)
+        else:
+            st.error("No recorded runs found in data/runs/, run scripts/make_demo_run.py first.")
