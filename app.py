@@ -58,7 +58,8 @@ with st.sidebar:
     # default to a real recorded run (anything but the scripted "demo-*") so the
     # landing proves real inference; fall back to whatever exists
     _default_idx = next((i for i, p in enumerate(runs) if not p.stem.startswith("demo")), 0)
-    chosen = (st.selectbox("Recorded run", runs, index=_default_idx, format_func=lambda p: p.stem)
+    chosen = (st.selectbox("Recorded run", runs, index=_default_idx, key="recorded_pick",
+                           format_func=lambda p: p.stem)
               if runs else None)
 
     st.divider()
@@ -1475,7 +1476,7 @@ def render_live(sponsored_run: bool = False) -> None:
             _odo()
         elif ev["type"] == "no_objection":
             done_roles.add(ev["role"])
-            stream_area.markdown(f'<div class="se-noobj">{esc(team.role_label(ev["role"]))}, no objection (0 tokens)</div>', unsafe_allow_html=True)
+            stream_area.markdown(f'<div class="se-noobj">{esc(team.role_label(ev["role"]))} — nothing to challenge here, no model call (0 tokens, by design)</div>', unsafe_allow_html=True)
         elif ev["type"] == "router" and not ev.get("close_phase"):
             stream_area.markdown(f'<p class="se-trace">router → {esc(ev["focused_question"])}</p>', unsafe_allow_html=True)
 
@@ -1518,16 +1519,23 @@ def render_live(sponsored_run: bool = False) -> None:
         run["meta"]["evidence_pack"] = "byo"
     import time as _time
     name = f"live-{_time.strftime('%Y%m%d-%H%M%S')}"
-    save_run(run, name)
+    saved_path = save_run(run, name)
     # hand the whole pipeline conversation to the Chat workspace
     feed = _build_feed(run)
     if byo:
         feed.insert(1, {"kind": "system", "text": "your evidence pack · processed in this session only"})
     st.session_state["chat_feed"] = feed
     st.session_state["active_run"] = run
-    st.session_state["active_run_name"] = name
+    st.session_state["active_run_name"] = str(saved_path)
     st.session_state["workspace"] = "Overview"
-    st.success(f"Run complete, saved as {name}.json. Showing the verdict + catches…")
+    # Point the sidebar picker at the run we just produced. Without this the
+    # picker stays on a recorded run, the routing reloads it, and the user's own
+    # result silently vanishes back into the AnDigi demo.
+    st.session_state["recorded_pick"] = saved_path
+    st.session_state["_live_done_msg"] = (
+        f"Live run complete · {llm.usage.total:,} tokens · saved as {name}. "
+        "Your verdict and the catches are below."
+    )
     st.rerun()
 
 
@@ -1536,16 +1544,33 @@ def render_live(sponsored_run: bool = False) -> None:
 # run instead of blanking the page. render_live(sponsored_run=True) assumes the
 # slot is held and releases it.
 _live_started = False
+
+# Buttons read True only on their click frame, so persist the run intent. We then
+# flip to ONE clean frame before running: render_live() blocks inside the pipeline,
+# and Streamlit only clears stale elements when a script finishes — so without the
+# clean frame the previous recorded report lingers behind the live progress.
 if run_sponsored:
-    if sponsored.available() and sponsored.remaining_runs() > 0 and sponsored.acquire_slot():
-        render_live(sponsored_run=True)
-        _live_started = True
-    else:
-        st.warning("Free live runs are busy or used up right now, here's a recorded run instead. "
-                   "Try again in a moment, or use your own key.")
+    st.session_state["_live_pending"] = "sponsored"
 elif run_live and api_key:
-    render_live()
-    _live_started = True
+    st.session_state["_live_pending"] = "byo"
+
+_pending = st.session_state.get("_live_pending")
+if _pending and not st.session_state.get("_live_clearing"):
+    st.session_state["_live_clearing"] = True
+    st.rerun()  # this frame renders nothing in the main column → clears the old report
+elif _pending:
+    st.session_state["_live_pending"] = None
+    st.session_state["_live_clearing"] = False
+    if _pending == "sponsored":
+        if sponsored.available() and sponsored.remaining_runs() > 0 and sponsored.acquire_slot():
+            render_live(sponsored_run=True)
+            _live_started = True
+        else:
+            st.warning("Free live runs are busy or used up right now, here's a recorded run instead. "
+                       "Try again in a moment, or use your own key.")
+    else:
+        render_live()
+        _live_started = True
 
 if _live_started:
     pass
@@ -1556,6 +1581,9 @@ elif chosen:
         st.session_state["active_run"] = _run
         st.session_state["active_run_name"] = str(chosen)
         st.session_state["chat_feed"] = []
+    _done_msg = st.session_state.pop("_live_done_msg", None)
+    if _done_msg:
+        st.success(_done_msg)
     ws = render_run_bar(_run)
     if ws == "Overview":
         render_hero(_run)
