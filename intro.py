@@ -165,7 +165,7 @@ def render() -> None:
     )
     st.markdown(
         '<p class="se-trace">Built by <a href="https://tiennguyentt.github.io/" '
-        'style="color:#D6A03C" target="_blank">Tiên Nguyễn, tiennguyentt.github.io</a> · '
+        'style="color:#D6A03C" target="_blank">Tien Nguyen, tiennguyentt.github.io</a> · '
         "Not AI-assisted. Agent-operated.</p>",
         unsafe_allow_html=True,
     )
