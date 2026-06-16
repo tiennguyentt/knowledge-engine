@@ -481,22 +481,6 @@ def render_hero(run: dict) -> None:
             unsafe_allow_html=True,
         )
 
-    # ---- optional, at the very bottom: run a fresh one live (the ~5-min path).
-    # It never gates the experience, everything above is already a real run.
-    if sponsored.available():
-        _left = sponsored.remaining_runs()
-        st.write("")
-        theme.section("optional", "Run one live yourself", "~5 min · no key")
-        with st.expander(f"Start a live run  ({_left} free today)", expanded=False, icon=":material/play_arrow:"):
-            st.caption("Everything above is already a **real recorded run**. This streams a brand-new one "
-                       "end to end. Pick a model, Stop anytime.")
-            st.selectbox("Model", SPON_MODELS, key="spon_model", accept_new_options=True,
-                         help="deepseek-chat is fastest; Kimi is a good alt; V4 is stronger but slower. Type any OpenRouter id.")
-            if st.button(":material/play_arrow: Start the live run", key="hero_live",
-                         disabled=_left <= 0, use_container_width=True):
-                st.session_state["_trigger_sponsored"] = True
-                st.rerun()
-
     # The bottom-pinned input only makes sense once the user has run the team on
     # their OWN evidence — on the recorded demo there is no live team to answer.
     # So it appears only after a live/sponsored run completes this session.
