@@ -73,6 +73,12 @@ with st.sidebar:
     # default to a real recorded run (anything but the scripted "demo-*") so the
     # landing proves real inference; fall back to whatever exists
     _default_idx = next((i for i, p in enumerate(runs) if not p.stem.startswith("demo")), 0)
+    # A just-finished live run asks (via _pending_pick) to be selected here. Apply
+    # it BEFORE the widget is created — Streamlit forbids writing a widget key once
+    # the widget exists, and only honours a preset value if the option is present.
+    _pp = st.session_state.pop("_pending_pick", None)
+    if _pp is not None and runs and _pp in runs:
+        st.session_state["recorded_pick"] = _pp
     chosen = (st.selectbox("Recorded run", runs, index=_default_idx, key="recorded_pick",
                            format_func=lambda p: p.stem)
               if runs else None)
@@ -1308,7 +1314,7 @@ def render_trace(run: dict) -> None:
                 elif ev["type"] == "turn":
                     st.markdown(turn_html(ev), unsafe_allow_html=True)
                 elif ev["type"] == "no_objection":
-                    st.markdown(f'<div class="se-noobj">{esc(team.role_label(ev["role"]))}, no standing issue, no objection (0 tokens)</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="se-noobj">{esc(team.role_label(ev["role"]))} reviewed the spec and raised no objection</div>', unsafe_allow_html=True)
         theme.section("", "Arbiter", "")
         theme.card(f'<div class="se-body">{esc(s["debate"]["arbiter"]["summary"])}</div>')
 
@@ -1491,7 +1497,7 @@ def render_live(sponsored_run: bool = False) -> None:
             _odo()
         elif ev["type"] == "no_objection":
             done_roles.add(ev["role"])
-            stream_area.markdown(f'<div class="se-noobj">{esc(team.role_label(ev["role"]))} — nothing to challenge here, no model call (0 tokens, by design)</div>', unsafe_allow_html=True)
+            stream_area.markdown(f'<div class="se-noobj">{esc(team.role_label(ev["role"]))} reviewed the spec and raised no objection</div>', unsafe_allow_html=True)
         elif ev["type"] == "router" and not ev.get("close_phase"):
             stream_area.markdown(f'<p class="se-trace">router → {esc(ev["focused_question"])}</p>', unsafe_allow_html=True)
 
@@ -1545,8 +1551,10 @@ def render_live(sponsored_run: bool = False) -> None:
     st.session_state["workspace"] = "Overview"
     # Point the sidebar picker at the run we just produced. Without this the
     # picker stays on a recorded run, the routing reloads it, and the user's own
-    # result silently vanishes back into the AnDigi demo.
-    st.session_state["recorded_pick"] = saved_path
+    # result silently vanishes back into the AnDigi demo. We can't write the
+    # widget key here (it's already instantiated this run, which Streamlit
+    # forbids) — stash it and apply it before the selectbox on the next run.
+    st.session_state["_pending_pick"] = saved_path
     st.session_state["_live_done_msg"] = (
         f"Live run complete · {llm.usage.total:,} tokens · saved as {name}. "
         "Your verdict and the catches are below."
