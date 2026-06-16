@@ -268,10 +268,6 @@ def render_hero(run: dict) -> None:
     # ~5-min path and lives at the very bottom, it never gates the experience.
     st.markdown(theme.telemetry(run["meta"]), unsafe_allow_html=True)
     st.markdown(
-        '<div class="se-flow-cap">Approved on paper. The model found the defects anyway, each with its receipt.</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
         '<div class="se-stats">'
         + stat(f'<span class="from">{g1["overall_score"]} →</span> '
                f'<span class="se-countup" style="--se-target:{g2["overall_score"]}"></span> '
