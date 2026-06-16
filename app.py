@@ -1559,11 +1559,13 @@ def render_live(sponsored_run: bool = False) -> None:
 # run instead of blanking the page. render_live(sponsored_run=True) assumes the
 # slot is held and releases it.
 # The whole main area lives in ONE st.empty() placeholder. render_live() blocks
-# inside the pipeline, and Streamlit only clears stale elements when a script
-# finishes — so a long-running live frame would otherwise leave the previous
-# recorded report stacked behind it. An st.empty() OVERWRITES its single child
-# wholesale the moment new content renders into it, clearing the old report
-# immediately instead of waiting for the (blocking) run to complete.
+# inside the pipeline, and Streamlit only auto-clears stale elements when a script
+# *finishes* — which a blocking live run never reaches. Rendering into the same
+# placeholder isn't enough either: Streamlit reconciles same-position containers
+# child-by-child, so the recorded report's trailing elements linger behind the
+# live progress. The fix is an EXPLICIT body.empty() before the live run: that
+# emits a "clear this subtree" delta which the frontend applies immediately,
+# wiping the old report before we block.
 body = st.empty()
 
 # Sponsored: a busy/capped slot falls through to the recorded run rather than
@@ -1572,11 +1574,11 @@ _sponsored_ok = (run_sponsored and sponsored.available()
                  and sponsored.remaining_runs() > 0 and sponsored.acquire_slot())
 
 if _sponsored_ok:
-    with body.container():
-        render_live(sponsored_run=True)
+    body.empty()  # body's only op this run → a clear delta is definitely sent
+    render_live(sponsored_run=True)  # live UI renders after the (now-empty) body
 elif run_live and api_key:
-    with body.container():
-        render_live()
+    body.empty()  # wipe the recorded report NOW, before the pipeline blocks
+    render_live()
 else:
     with body.container():
         if run_sponsored:
