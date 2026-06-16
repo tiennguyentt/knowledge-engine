@@ -16,17 +16,30 @@ import time
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import intro
 import theme
 from engine import compiler, drift, evals, handoff, ledger, sponsored, standards, team, timemachine
-from engine.llm import DEFAULT_BASE_URL, SUGGESTED_MODELS, LLM
+from engine.llm import DEFAULT_BASE_URL, REQUEST_TIMEOUT, SUGGESTED_MODELS, LLM
 from engine.pipeline import DATA_DIR, list_runs, load_run, run_pipeline, save_run
 from engine.schemas import DraftSpec
 
 st.set_page_config(page_title="Knowledge Engine", page_icon="assets/favicon.png", layout="wide")
 theme.inject()
 theme.inject_chat()
+
+# st.chat_input pins itself to the viewport bottom and Streamlit yanks the page
+# down to it on first load, burying the verdict. Scroll back to the top once per
+# session so a cold viewer lands on the catch, not the input bar.
+if not st.session_state.get("_landed_top"):
+    st.session_state["_landed_top"] = True
+    components.html(
+        "<script>setTimeout(function(){try{"
+        "(parent.document.querySelector('section.main')||parent.document.scrollingElement)"
+        ".scrollTo(0,0);}catch(e){}}, 150);</script>",
+        height=0,
+    )
 
 esc = theme.esc
 
@@ -61,7 +74,12 @@ with st.sidebar:
                    "calls, never stored, never committed. Leave the pack empty to run the AnDigi case.")
         base_url = st.text_input("API base URL", value=DEFAULT_BASE_URL)
         api_key = st.text_input("API key", type="password", help="OpenRouter keys start with sk-or-. Never stored.")
-        model = st.selectbox("Model", SUGGESTED_MODELS, accept_new_options=True)
+        model = st.selectbox(
+            "Model", SUGGESTED_MODELS, index=0, accept_new_options=True,
+            format_func=lambda m: m + ("  ·  free, slower (queued)" if m.endswith(":free") else ""),
+            help="Default deepseek-chat is fast and reliable. Free tiers work but are "
+                 "rate-limited on OpenRouter and can stall the first call for minutes.",
+        )
         byo_files = st.file_uploader(
             "Your evidence pack (optional)", accept_multiple_files=True,
             type=["md", "txt", "sql", "py", "json"],
@@ -72,7 +90,7 @@ with st.sidebar:
         st.download_button("draft-spec.json template",
                            (DATA_DIR / "andigi" / "draft-spec.json").read_text(encoding="utf-8"),
                            "draft-spec.json", use_container_width=True)
-        run_live = st.button(":material/play_arrow: Run on my key", disabled=not api_key, use_container_width=True)
+        run_live = st.button(":material/play_arrow: RUN", disabled=not api_key, use_container_width=True)
         st.caption("Hard budget 150k tokens, live burn shown. Cheap models work: every call is "
                    "schema-validated with retries. Uploaded files stay in this session only, "
                    "never stored server-side, never committed.")
@@ -1402,6 +1420,10 @@ def render_live(sponsored_run: bool = False) -> None:
         _whose = "the AnDigi case, free, on us" if sponsored_run else "your evidence"
         st.markdown(f'<p class="se-sysmsg">· live run · the full roster is working on {_whose} ·</p>',
                     unsafe_allow_html=True)
+        st.caption("Live, no cache — each step is a real model call. The first step "
+                   "(reading your evidence + drafting the spec) is the slowest; the "
+                   "token counter on the right ticks as the model responds. Steps "
+                   "appear below as they start.")
         status_area = st.container()
         stream_area = st.container()
 
@@ -1417,12 +1439,26 @@ def render_live(sponsored_run: bool = False) -> None:
 
     titles = {"wiki": "Evidence → wiki", "draft": "Drafting spec from evidence", "conflicts": "Conflict check", "gate": "Code gate",
               "grade": "Grading round 1", "debate": "Role debate", "regrade": "Re-grade", "advisor": "Advisor"}
+    descs = {
+        "wiki": "Reading your evidence and compiling source-traced claims…",
+        "draft": "No draft spec uploaded — synthesizing one from the wiki…",
+        "conflicts": "Cross-checking claims for contradictions by source authority…",
+        "gate": "Deterministic code gate on the draft (no model)…",
+        "grade": "Grading the spec against the evidence, round 1…",
+        "debate": "The full role team is reviewing and challenging the spec…",
+        "regrade": "Re-grading after the team's amendments…",
+        "advisor": "Final advisor pass before sign-off…",
+    }
 
     def on_progress(stage: str, state: str) -> None:
         if state == "start":
-            boxes[stage] = status_area.status(titles.get(stage, stage), state="running")
+            box = status_area.status(titles.get(stage, stage), state="running", expanded=True)
+            box.caption(descs.get(stage, "Waiting for the model to respond…"))
+            boxes[stage] = box
         elif stage in boxes:
-            boxes[stage].update(label=f"{titles.get(stage, stage)}, done · {llm.usage.total:,} tokens burned", state="complete")
+            boxes[stage].update(
+                label=f"{titles.get(stage, stage)}, done · {llm.usage.total:,} tokens burned",
+                state="complete", expanded=False)
         _odo()
 
     def on_event(ev: dict) -> None:
@@ -1457,10 +1493,19 @@ def render_live(sponsored_run: bool = False) -> None:
         if sponsored_run:
             sponsored.release_slot()
         _m = str(err)
-        if "402" in _m or "credit" in _m.lower() or "more credits" in _m.lower():
+        _ml = _m.lower()
+        if "402" in _m or "credit" in _ml or "more credits" in _ml:
             st.error("Live run unavailable, the OpenRouter key is **out of credits**. "
                      "Top up at openrouter.ai/settings/credits. The recorded run (← Back) is "
                      "fully available and is itself a real model run.")
+        elif "timeout" in _ml or "timed out" in _ml:
+            st.error(f"The model **{esc(eff_model)}** didn't respond in time "
+                     f"({int(REQUEST_TIMEOUT)}s per call). Free tiers are often queued — "
+                     "pick **deepseek/deepseek-chat** (the default) and run again. The "
+                     "recorded run (← Back) is a real model run you can explore meanwhile.")
+        elif "429" in _m or "rate" in _ml:
+            st.error(f"The model **{esc(eff_model)}** is rate-limited right now. Free tiers "
+                     "hit this fast — switch to **deepseek/deepseek-chat** and retry in a moment.")
         else:
             st.error(f"Run failed: {err}")
         st.stop()

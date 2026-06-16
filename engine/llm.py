@@ -36,15 +36,23 @@ _load_dotenv()
 DEFAULT_BASE_URL = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
 DEFAULT_MODEL = os.getenv("KNOWLEDGE_ENGINE_MODEL", "deepseek/deepseek-chat")
 
+# Default (index 0) is a fast, reliable paid model: a live run makes ~8 sequential
+# calls, so responsiveness matters more than per-token cost. The ":free" tiers are
+# offered last — they are heavily rate-limited/queued on OpenRouter and routinely
+# stall the first call for minutes, so they are a poor default.
 SUGGESTED_MODELS = [
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "nvidia/nemotron-3-nano-30b-a3b:free",
     "deepseek/deepseek-chat",
     "google/gemini-2.0-flash-001",
     "qwen/qwen-2.5-72b-instruct",
     "meta-llama/llama-3.3-70b-instruct",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
 ]
+
+# Per-request ceiling so a stalled/queued provider fails fast with a readable
+# error instead of hanging on the OpenAI SDK's ~600s default.
+REQUEST_TIMEOUT = 120.0
 
 MAX_JSON_RETRIES = 2
 STREAM_FIELDS = ("message", "observation")
@@ -112,7 +120,8 @@ class LLM:
     usage: Usage = field(default_factory=Usage)
 
     def __post_init__(self) -> None:
-        self._client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        self._client = OpenAI(api_key=self.api_key, base_url=self.base_url,
+                              timeout=REQUEST_TIMEOUT)
 
     def _check_budget(self) -> None:
         if self.token_budget and self.usage.total >= self.token_budget:
