@@ -103,15 +103,15 @@ with st.sidebar:
 
     st.divider()
     st.header("Run live")
-    # The PRIMARY "Run it live, on us" control lives in the MAIN column (see
-    # render_hero) so it's reachable on mobile without opening this sidebar.
-    st.caption("The live run lives on the main screen (bottom of the report). "
-               "The option below is only for your own private evidence + key.")
+    st.caption("Run the team live on your own evidence with your own key. "
+               "Leave the pack empty to run the AnDigi case.")
 
-    # EDGE CASE: bring your own key, only for running your OWN private evidence.
-    with st.expander("Run on your own evidence (your key, private)", expanded=False):
-        st.caption("For your own spec/evidence. Your key is used only for this session's "
-                   "calls, never stored, never committed. Leave the pack empty to run the AnDigi case.")
+    # Bring your own key, for running your OWN private evidence. Expanded by
+    # default: this is now the only live-run entry point, so it must be visible
+    # rather than hidden behind a closed expander.
+    with st.expander("Run on your own evidence (your key, private)", expanded=True):
+        st.caption("Your key is used only for this session's calls, never stored, "
+                   "never committed. Leave the pack empty to run the AnDigi case.")
         base_url = st.text_input("API base URL", value=DEFAULT_BASE_URL)
         api_key = st.text_input("API key", type="password", help="OpenRouter keys start with sk-or-. Never stored.")
         model = st.selectbox(
